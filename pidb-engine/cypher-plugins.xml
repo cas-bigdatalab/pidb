@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+    <bean class="cn.pidb.engine.blob.CypherPluginRegistry">
+        <property name="extractors">
+            <list>
+                <bean class="test.TestBlobPropertyExtractor"/>
+                <bean class="test.TestAnyPropertyExtractor"/>
+                <bean class="test.TestImageMetaDataExtractor"/>
+                <bean class="test.TestImagePlateNumberExtractor"/>
+            </list>
+        </property>
+        <property name="comparators">
+            <list>
+                <bean class="test.TestImageSimilarityComparator"/>
+                <bean class="test.TestImagePlateNumberComparator"/>
+                <bean class="test.TestAudioTextComparator"/>
+                <bean class="test.TestString2StringComparator"/>
+            </list>
+        </property>
+        <property name="thresholds">
+            <list>
+                <bean class="cn.pidb.engine.blob.ThresholdEntry">
+                    <property name="source" value="image"/>
+                    <property name="target" value="image"/>
+                    <property name="threshold" value="0.7"/>
+                </bean>
+                <bean class="cn.pidb.engine.blob.ThresholdEntry">
+                    <property name="source" value="image"/>
+                    <property name="target" value="string"/>
+                    <property name="threshold" value="0.7"/>
+                </bean>
+                <bean class="cn.pidb.engine.blob.ThresholdEntry">
+                    <property name="source" value="audio"/>
+                    <property name="target" value="image"/>
+                    <property name="threshold" value="0.7"/>
+                </bean>
+            </list>
+        </property>
+    </bean>
+</beans>

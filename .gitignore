@@ -1,2 +1,6 @@
-*.class
-*.log
+.idea/
+target/
+testdb/
+/.DS_Store
+.DS_Store
+*.iml
