@@ -9,7 +9,7 @@
     <parent>
         <groupId>pidb</groupId>
         <artifactId>parent</artifactId>
-        <version>0.5</version>
+        <version>0.1</version>
     </parent>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -20,7 +20,7 @@
         <dependency>
             <groupId>pidb</groupId>
             <artifactId>pidb-interface</artifactId>
-            <version>0.5</version>
+            <version>0.1</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
