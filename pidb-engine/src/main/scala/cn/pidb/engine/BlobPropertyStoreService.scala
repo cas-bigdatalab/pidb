@@ -38,7 +38,22 @@ class BlobPropertyStoreService(storeDir: File, conf: org.neo4j.kernel.configurat
   conf.asInstanceOf[RuntimeContextHolder].putRuntimeContext[BlobPropertyStoreService](this);
 
   val _cypherPluginRegistry: CypherPluginRegistry = config.getRaw("blob.plugins.conf").map(x => {
-    val path = new File(x).getAbsolutePath;
+    val xml = new File(x);
+
+    val path =
+      if (xml.isAbsolute) {
+        xml.getPath
+      }
+      else {
+        val configFilePath = config.getRaw("config.file.path")
+        if (configFilePath.isDefined) {
+          new File(new File(configFilePath.get).getParentFile, x).getAbsoluteFile.getCanonicalPath
+        }
+        else {
+          xml.getAbsoluteFile.getCanonicalPath
+        }
+      }
+
     logger.info(s"loading plugins: $path");
     val appctx = new FileSystemXmlApplicationContext("file://" + path);
     appctx.getBean[CypherPluginRegistry](classOf[CypherPluginRegistry]);

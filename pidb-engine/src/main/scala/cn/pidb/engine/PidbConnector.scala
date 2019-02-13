@@ -44,7 +44,8 @@ class PidbServer(dbDir: File, configFile: File, configOverrides: Map[String, Str
   val server = new CommunityBootstrapper();
 
   def start(): Unit = {
-    server.start(dbDir, Optional.of(configFile), JavaConversions.mapAsJavaMap(configOverrides));
+    server.start(dbDir, Optional.of(configFile),
+      JavaConversions.mapAsJavaMap(configOverrides + ("config.file.path" -> configFile.getAbsolutePath)));
   }
 
   def shutdown(): Unit = {
