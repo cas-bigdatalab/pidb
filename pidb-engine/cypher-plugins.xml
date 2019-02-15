@@ -17,6 +17,7 @@
                 <bean class="test.TestImagePlateNumberComparator"/>
                 <bean class="test.TestAudioTextComparator"/>
                 <bean class="test.TestString2StringComparator"/>
+                <bean class="cn.aipm.image.FaceSimilarityComparator"/>
             </list>
         </property>
         <property name="thresholds">
