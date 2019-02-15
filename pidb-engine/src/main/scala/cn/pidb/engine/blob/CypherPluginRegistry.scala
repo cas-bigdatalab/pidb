@@ -1,6 +1,7 @@
 package cn.pidb.engine.blob
 
 import cn.pidb.blob._
+import cn.pidb.util.Logging
 
 import scala.beans.BeanProperty
 
@@ -62,10 +63,16 @@ trait ValueMatcher {
   def compare(a: Any, b: Any): Double;
 }
 
-class ValueComparatorRegistry(list: Array[ValueComparator]) extends ValueMatcher {
-  val map: Map[(ValueType, ValueType), ValueComparator] = list.map(x => x.argumentTypes -> x)
-    .map(x => (x._1._1 -> x._1._2) -> x._2)
-    .toMap
+class ValueComparatorRegistry(list: Array[ValueComparator]) extends ValueMatcher with Logging {
+  val map: Map[(ValueType, ValueType), ValueComparator] = {
+    list.groupBy(_.argumentTypes).filter(_._2.length > 1).headOption.foreach { x =>
+      logger.warn(s"more than one comparators defined for  ${x._1}: ${x._2.map(_.getClass).toList}")
+    }
+
+    list.map(x => x.argumentTypes -> x)
+      .map(x => (x._1._1 -> x._1._2) -> x._2)
+      .toMap
+  }
 
   def like(a: Any, b: Any, threshold: Double): Boolean =
     compare(a, b) > threshold
@@ -73,7 +80,10 @@ class ValueComparatorRegistry(list: Array[ValueComparator]) extends ValueMatcher
   override def compare(a: Any, b: Any): Double = {
     (a, b) match {
       case (null, null) => 1.0
-      case _ => map.get(ValueType.of(a) -> ValueType.of(b)).map(x => x.compare(a, b)).getOrElse(throw new NoSuitableComparatorException(a, b))
+      case _ => map.get(ValueType.of(a) -> ValueType.of(b)).map { x =>
+        logger.debug(s"choosing $x")
+        x.compare(a, b)
+      }.getOrElse(throw new NoSuitableComparatorException(a, b))
     }
   }
 }

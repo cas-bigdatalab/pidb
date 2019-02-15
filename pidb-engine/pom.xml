@@ -25,13 +25,18 @@
             <version>0.1</version>
         </dependency>
         <!--pidb-blob-storage is required on runtime-->
-        <!--
         <dependency>
             <groupId>pidb</groupId>
             <artifactId>pidb-blob-storage</artifactId>
-            <version>1.0</version>
+            <version>0.1</version>
+            <scope>runtime</scope>
         </dependency>
-        -->
+        <dependency>
+            <groupId>aipm</groupId>
+            <artifactId>ai-modules-scala</artifactId>
+            <version>0.1</version>
+            <scope>runtime</scope>
+        </dependency>
         <!--jersey should be import explicitly-->
         <!--because springframework & neo4j use different versions-->
         <dependency>
