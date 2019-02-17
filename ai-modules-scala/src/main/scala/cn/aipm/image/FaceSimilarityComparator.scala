@@ -22,7 +22,7 @@ class FaceSimilarityComparator extends ValueComparator {
   }
 
   override def initialize(conf: Config): Unit = {
-    val aipmUrl = conf.getRequiredValueAsString("aipm-http-url")
+    //val aipmUrl = conf.getRequiredValueAsString("aipm-http-url")
     //...
   }
 }

@@ -10,7 +10,7 @@ class CommonPropertyExtractor extends PropertyExtractor {
   override def declareProperties() = Map("class" -> classOf[String])
 
   override def extract(x: Any): Map[String, Any] = {
-    Map("class" -> x.getClass)
+    Map("class" -> x.getClass.getName)
   }
 
   override def initialize(conf: Config) {

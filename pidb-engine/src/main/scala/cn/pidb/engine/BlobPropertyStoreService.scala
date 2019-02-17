@@ -6,6 +6,7 @@ import javax.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
 import cn.pidb.blob._
 import cn.pidb.blob.storage.BlobStorage
 import cn.pidb.engine.blob._
+import cn.pidb.engine.cypherplus.{ValueMatcher, CustomPropertyProvider, CypherPluginRegistry}
 import cn.pidb.util.ConfigEx._
 import cn.pidb.util.StreamUtils._
 import cn.pidb.util.{Config, Logging, Neo2JavaValueMapper}

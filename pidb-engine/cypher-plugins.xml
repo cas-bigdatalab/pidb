@@ -2,35 +2,35 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
-    <bean class="cn.pidb.engine.blob.CypherPluginRegistry">
+    <bean class="cn.pidb.engine.cypherplus.CypherPluginRegistry">
         <!-- defines all extractors -->
         <property name="extractors">
             <list>
-                <bean class="cn.pidb.engine.blob.PropertyExtractorEntry">
+                <bean class="cn.pidb.engine.cypherplus.PropertyExtractorEntry">
                     <property name="extractor">
                         <bean class="cn.aipm.CommonPropertyExtractor"/>
                     </property>
                     <property name="domain" value="*"/>
                 </bean>
-                <bean class="cn.pidb.engine.blob.PropertyExtractorEntry">
+                <bean class="cn.pidb.engine.cypherplus.PropertyExtractorEntry">
                     <property name="extractor">
                         <bean class="cn.aipm.CommonBlobPropertyExtractor"/>
                     </property>
                     <property name="domain" value="blob/*"/>
                 </bean>
-                <bean class="cn.pidb.engine.blob.PropertyExtractorEntry">
+                <bean class="cn.pidb.engine.cypherplus.PropertyExtractorEntry">
                     <property name="extractor">
                         <bean class="test.TestAnyPropertyExtractor"/>
                     </property>
                     <property name="domain" value="*"/>
                 </bean>
-                <bean class="cn.pidb.engine.blob.PropertyExtractorEntry">
+                <bean class="cn.pidb.engine.cypherplus.PropertyExtractorEntry">
                     <property name="extractor">
                         <bean class="cn.aipm.image.ImageMetaDataExtractor"/>
                     </property>
                     <property name="domain" value="blob/image"/>
                 </bean>
-                <bean class="cn.pidb.engine.blob.PropertyExtractorEntry">
+                <bean class="cn.pidb.engine.cypherplus.PropertyExtractorEntry">
                     <property name="extractor">
                         <bean class="cn.aipm.image.PlateNumberExtractor"/>
                     </property>
@@ -41,7 +41,7 @@
         <!-- defines all comparators -->
         <property name="comparators">
             <list>
-                <bean class="cn.pidb.engine.blob.ValueComparatorEntry">
+                <bean class="cn.pidb.engine.cypherplus.ValueComparatorEntry">
                     <property name="domain" value="blob/image:blob/image"/>
                     <property name="threshold" value="0.7"/>
                     <property name="namedComparators">
@@ -52,7 +52,7 @@
                         </map>
                     </property>
                 </bean>
-                <bean class="cn.pidb.engine.blob.ValueComparatorEntry">
+                <bean class="cn.pidb.engine.cypherplus.ValueComparatorEntry">
                     <property name="domain" value="string:string"/>
                     <property name="threshold" value="0.7"/>
                     <property name="namedComparators">
