@@ -37,34 +37,35 @@ class BlobPropertyStoreService(storeDir: File, conf: org.neo4j.kernel.configurat
 
   conf.asInstanceOf[RuntimeContextHolder].putRuntimeContext[BlobPropertyStoreService](this);
 
-  val _cypherPluginRegistry: CypherPluginRegistry = config.getRaw("blob.plugins.conf").map(x => {
-    val xml = new File(x);
-
-    val path =
-      if (xml.isAbsolute) {
-        xml.getPath
-      }
-      else {
-        val configFilePath = config.getRaw("config.file.path")
-        if (configFilePath.isDefined) {
-          new File(new File(configFilePath.get).getParentFile, x).getAbsoluteFile.getCanonicalPath
-        }
-        else {
-          xml.getAbsoluteFile.getCanonicalPath
-        }
-      }
-
-    logger.info(s"loading plugins: $path");
-    val appctx = new FileSystemXmlApplicationContext("file://" + path);
-    appctx.getBean[CypherPluginRegistry](classOf[CypherPluginRegistry]);
-  }).getOrElse(new CypherPluginRegistry())
-
   var _instantStorage: BlobStorage = _;
   val _mapper = new Neo2JavaValueMapper(proceduresService.valueMapper().asInstanceOf[TypeMappers]);
   var _blobServer: HttpBlobServer = _;
 
-  val _valueMatcher = new ValueComparatorRegistry(_cypherPluginRegistry.getComparators());
-  val _propertyProvider: CustomPropertyProvider = new CustomPropertyExtractorRegistry(_cypherPluginRegistry.getExtractors)
+  val (_valueMatcher, _propertyProvider) = {
+    val cypherPluginRegistry = config.getRaw("blob.plugins.conf").map(x => {
+      val xml = new File(x);
+
+      val path =
+        if (xml.isAbsolute) {
+          xml.getPath
+        }
+        else {
+          val configFilePath = config.getRaw("config.file.path")
+          if (configFilePath.isDefined) {
+            new File(new File(configFilePath.get).getParentFile, x).getAbsoluteFile.getCanonicalPath
+          }
+          else {
+            xml.getAbsoluteFile.getCanonicalPath
+          }
+        }
+
+      logger.info(s"loading plugins: $path");
+      val appctx = new FileSystemXmlApplicationContext("file://" + path);
+      appctx.getBean[CypherPluginRegistry](classOf[CypherPluginRegistry]);
+    }).getOrElse(new CypherPluginRegistry());
+
+    (cypherPluginRegistry.createValueComparatorRegistry(config), cypherPluginRegistry.createCustomPropertyProvider(config));
+  }
 
   def getCustomPropertyProvider: CustomPropertyProvider = _propertyProvider;
 

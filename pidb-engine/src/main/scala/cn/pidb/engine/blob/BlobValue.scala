@@ -18,6 +18,7 @@ case class BlobValue(val blob: Blob) extends ScalarValue with BlobHolder {
   override def unsafeCompareTo(value: Value): Int = blob.length.compareTo(value.asInstanceOf[BlobValue].blob.length)
 
   override def writeTo[E <: Exception](valueWriter: ValueWriter[E]): Unit = {
+    //TOOD: batch write on Blob[], all buffered blob?
     BlobIO.writeBlobValue(this, valueWriter);
   }
 

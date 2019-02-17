@@ -138,7 +138,7 @@ trait Expressions extends Parser
           ValueLike(a, b.map(_.value.toString.toDouble).getOrElse(-1), c)) //TODO: like
         | group(operator("%%") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          ValueCompare(a, b.map(_.name).getOrElse(""), c)) //TODO: like
+          ValueCompare(a, b.map(_.name), c)) //TODO: like
         | group(keyword("IN") ~~ Expression2) ~~>> (ast.In(_: ast.Expression, _))
         | group(keyword("STARTS WITH") ~~ Expression2) ~~>> (ast.StartsWith(_: ast.Expression, _))
         | group(keyword("ENDS WITH") ~~ Expression2) ~~>> (ast.EndsWith(_: ast.Expression, _))

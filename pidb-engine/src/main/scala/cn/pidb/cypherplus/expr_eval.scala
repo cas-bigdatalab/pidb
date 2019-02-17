@@ -69,7 +69,7 @@ case class ValueLikeExpression(lhsExpr: Expression, threshold: Double, rightExpr
           case (_, _, false) => Some(false)
           case _ => Some(state._get("query.inner.transactionalContext.tc.graph.graph.config").
             asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]()
-            .getValueMatcher.like(x, y, threshold))
+            .getValueMatcher.like(x, y))
         }
       }
       case (BlobValue(x), y: Value) => {
@@ -77,7 +77,7 @@ case class ValueLikeExpression(lhsExpr: Expression, threshold: Double, rightExpr
           case (0) => Some(false)
           case _ => Some(state._get("query.inner.transactionalContext.tc.graph.graph.config").
             asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]()
-            .getValueMatcher.like(x, y.asObject(), threshold))
+            .getValueMatcher.like(x, y.asObject()))
         }
       }
       case (lhs, rhs) =>
@@ -98,7 +98,7 @@ case class ValueLikeExpression(lhsExpr: Expression, threshold: Double, rightExpr
   def symbolTableDependencies = lhsExpr.symbolTableDependencies ++ rightExpr.symbolTableDependencies
 }
 
-case class ValueCompareExpression(lhsExpr: Expression, algorithm: String, rightExpr: Expression)
+case class ValueCompareExpression(lhsExpr: Expression, algorithm: Option[String], rightExpr: Expression)
                                  (implicit converter: TextValue => TextValue = identity) extends Expression {
   override def apply(ctx: ExecutionContext, state: QueryState): AnyValue = {
     val aVal = lhsExpr(ctx, state)
@@ -106,13 +106,13 @@ case class ValueCompareExpression(lhsExpr: Expression, algorithm: String, rightE
 
     (aVal, bVal) match {
       case (x, y) if x == Values.NO_VALUE || y == Values.NO_VALUE => Values.NO_VALUE
-      case (a:Value,b:Value) => compare(a, b, state)
+      case (a: Value, b: Value) => compare(a, b, state)
     }
   }
 
   private def compare(b1: Value, b2: Value, state: QueryState): Value = {
     Values.doubleValue(state._get("query.inner.transactionalContext.tc.graph.graph.config").asInstanceOf[RuntimeContextHolder]
-      .getRuntimeContext[BlobPropertyStoreService].getValueMatcher.compare(b1.asObject, b2.asObject()))
+      .getRuntimeContext[BlobPropertyStoreService].getValueMatcher.compare(b1.asObject, b2.asObject(), algorithm))
   }
 
   override def toString: String = lhsExpr.toString() + " %% /" + rightExpr.toString() + "/"

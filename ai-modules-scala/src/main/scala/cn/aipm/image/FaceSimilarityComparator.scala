@@ -2,6 +2,8 @@ package cn.aipm.image
 
 import cn.pidb.blob._
 import cn.aipm.service.Services
+import cn.pidb.util.Config
+import cn.pidb.util.ConfigEx._
 
 
 class FaceSimilarityComparator extends ValueComparator {
@@ -19,6 +21,8 @@ class FaceSimilarityComparator extends ValueComparator {
 
   }
 
-  override def argumentTypes(): (ValueType, ValueType) =
-    ValueType.mimeType("image") -> ValueType.mimeType("image")
+  override def initialize(conf: Config): Unit = {
+    val aipmUrl = conf.getRequiredValueAsString("aipm-http-url")
+    //...
+  }
 }

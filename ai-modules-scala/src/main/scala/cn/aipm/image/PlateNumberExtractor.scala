@@ -1,8 +1,8 @@
 package cn.aipm.image
 
-import cn.pidb.blob.{Blob, PropertyExtractor, ValueType}
+import cn.pidb.blob.{Blob, PropertyExtractor}
 import cn.aipm.service.Services
-
+import cn.pidb.util.Config
 
 
 class PlateNumberExtractor extends PropertyExtractor {
@@ -13,5 +13,7 @@ class PlateNumberExtractor extends PropertyExtractor {
     Map("plateNumber" -> plateNumber)
   })
 
-  override def argumentType() = ValueType.mimeType("image")
+  override def initialize(conf: Config): Unit = {
+
+  }
 }

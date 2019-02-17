@@ -17,7 +17,7 @@ case class CustomProperty(map: Expression, propertyKey: PropertyKeyName)(val pos
   override def asCanonicalStringVal = s"${map.asCanonicalStringVal}.${propertyKey.asCanonicalStringVal}"
 }
 
-case class ValueCompare(lhs: Expression, algorithm: String, rhs: Expression)(val position: InputPosition)
+case class ValueCompare(lhs: Expression, algorithm: Option[String], rhs: Expression)(val position: InputPosition)
   extends Expression with BinaryOperatorExpression {
   override val signatures = Vector(
     TypeSignature(argumentTypes = Vector(CTAny, CTAny), outputType = CTFloat)

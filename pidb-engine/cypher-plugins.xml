@@ -3,39 +3,71 @@
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
     <bean class="cn.pidb.engine.blob.CypherPluginRegistry">
+        <!-- defines all extractors -->
         <property name="extractors">
             <list>
-                <bean class="test.TestBlobPropertyExtractor"/>
-                <bean class="test.TestAnyPropertyExtractor"/>
-                <bean class="test.TestImageMetaDataExtractor"/>
-                <bean class="test.TestImagePlateNumberExtractor"/>
+                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.PropertyExtractorEntry">
+                    <property name="extractor">
+                        <bean class="cn.aipm.CommonPropertyExtractor"/>
+                    </property>
+                    <property name="domain" value="*"/>
+                </bean>
+                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.PropertyExtractorEntry">
+                    <property name="extractor">
+                        <bean class="cn.aipm.CommonBlobPropertyExtractor"/>
+                    </property>
+                    <property name="domain" value="blob/*"/>
+                </bean>
+                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.PropertyExtractorEntry">
+                    <property name="extractor">
+                        <bean class="test.TestAnyPropertyExtractor"/>
+                    </property>
+                    <property name="domain" value="*"/>
+                </bean>
+                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.PropertyExtractorEntry">
+                    <property name="extractor">
+                        <bean class="cn.aipm.image.ImageMetaDataExtractor"/>
+                    </property>
+                    <property name="domain" value="blob/image"/>
+                </bean>
+                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.PropertyExtractorEntry">
+                    <property name="extractor">
+                        <bean class="cn.aipm.image.PlateNumberExtractor"/>
+                    </property>
+                    <property name="domain" value="blob/image"/>
+                </bean>
             </list>
         </property>
+        <!-- defines all comparators -->
         <property name="comparators">
             <list>
-                <bean class="test.TestImageSimilarityComparator"/>
-                <bean class="test.TestImagePlateNumberComparator"/>
-                <bean class="test.TestAudioTextComparator"/>
-                <bean class="test.TestString2StringComparator"/>
-                <bean class="cn.aipm.image.FaceSimilarityComparator"/>
-            </list>
-        </property>
-        <property name="thresholds">
-            <list>
-                <bean class="cn.pidb.engine.blob.ThresholdEntry">
-                    <property name="source" value="image"/>
-                    <property name="target" value="image"/>
+                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.ValueComparatorEntry">
+                    <property name="domain" value="blob/image:blob/image"/>
                     <property name="threshold" value="0.7"/>
+                    <property name="namedComparators">
+                        <map>
+                            <entry key="face">
+                                <bean class="cn.aipm.image.FaceSimilarityComparator"/>
+                            </entry>
+                        </map>
+                    </property>
                 </bean>
-                <bean class="cn.pidb.engine.blob.ThresholdEntry">
-                    <property name="source" value="image"/>
-                    <property name="target" value="string"/>
+                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.ValueComparatorEntry">
+                    <property name="domain" value="string:string"/>
                     <property name="threshold" value="0.7"/>
-                </bean>
-                <bean class="cn.pidb.engine.blob.ThresholdEntry">
-                    <property name="source" value="audio"/>
-                    <property name="target" value="image"/>
-                    <property name="threshold" value="0.7"/>
+                    <property name="namedComparators">
+                        <map>
+                            <entry key="jaro">
+                                <bean class="cn.aipm.string.JaroWinklerStringSimilarity"/>
+                            </entry>
+                            <entry key="jaccard">
+                                <bean class="cn.aipm.string.JaccardStringSimilarity"/>
+                            </entry>
+                            <entry key="cosine">
+                                <bean class="cn.aipm.string.CosineStringSimilarity"/>
+                            </entry>
+                        </map>
+                    </property>
                 </bean>
             </list>
         </property>

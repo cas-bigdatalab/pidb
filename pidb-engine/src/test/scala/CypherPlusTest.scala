@@ -46,8 +46,8 @@ class CypherPlusTest {
       case _ => Assert.assertTrue(true);
     }
 
-    Assert.assertEquals(true, db.execute("return Blob.fromFile('/Users/bluejoe/Pictures/similarity_test_1.png') %% Blob.fromFile('/Users/bluejoe/Pictures/similarity_test_2.png') as r").next().get("r").asInstanceOf[Double] > 0.5);
-    Assert.assertEquals(0.0, db.execute("return Blob.fromFile('/Users/bluejoe/Pictures/1.jpeg') %% Blob.fromFile('/Users/bluejoe/Pictures/1.jpeg') as r").next().get("r"));
+    Assert.assertEquals(true, db.execute("return Blob.fromFile('/Users/bluejoe/Pictures/meng.jpg') %% Blob.fromFile('/Users/bluejoe/Pictures/event.jpg') as r").next().get("r").asInstanceOf[Double] > 0.7);
+    Assert.assertEquals(true, db.execute("return Blob.fromFile('/Users/bluejoe/Pictures/simba.jpg') %% Blob.fromFile('/Users/bluejoe/Pictures/simba2.jpg') as r").next().get("r").asInstanceOf[Double] > 0.9);
     Assert.assertEquals(0.9, db.execute("return '杜 一' %% '杜一' as r").next().get("r"));
     Assert.assertEquals(0.9, db.execute("return '杜 一' %%jaro '杜一' as r").next().get("r"));
     Assert.assertEquals(0.75, db.execute("return 'Yi Du' %% 'DU Yi' as r").next().get("r"));

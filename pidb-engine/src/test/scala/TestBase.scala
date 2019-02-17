@@ -16,6 +16,7 @@ class TestBase {
       node1.setProperty("name", "bob");
       node1.setProperty("age", 30);
       node1.setProperty("bytes", IOUtils.toByteArray(new FileInputStream(new File("./test.png"))));
+
       //with a blob property
       node1.setProperty("photo", Blob.fromFile(new File("./test.png")));
       node1.setProperty("photo2", Array(Blob.fromFile(new File("./test.png")), Blob.fromFile(new File("./test1.png"))));
