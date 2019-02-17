@@ -31,20 +31,20 @@ object ValueType {
   def typeNameOf(a: Any, b: Any): String = s"${typeNameOf(a)}:${typeNameOf(b)}"
 }
 
+class ValueComparatorEntry {
+  @BeanProperty var domain: String = "";
+  @BeanProperty var threshold: Double = 0.7;
+  @BeanProperty var namedComparators: java.util.Map[String, ValueComparator] = _;
+}
+
+class PropertyExtractorEntry {
+  @BeanProperty var domain: String = "";
+  @BeanProperty var extractor: PropertyExtractor = _;
+}
+
 class CypherPluginRegistry {
   @BeanProperty var extractors: Array[PropertyExtractorEntry] = Array();
   @BeanProperty var comparators: Array[ValueComparatorEntry] = Array();
-
-  class ValueComparatorEntry {
-    @BeanProperty var domain: String = "";
-    @BeanProperty var threshold: Double = 0.7;
-    @BeanProperty var namedComparators: java.util.Map[String, ValueComparator] = _;
-  }
-
-  class PropertyExtractorEntry {
-    @BeanProperty var domain: String = "";
-    @BeanProperty var extractor: PropertyExtractor = _;
-  }
 
   def createCustomPropertyProvider(conf: Config) = new CustomPropertyProvider {
     extractors.foreach(_.extractor.initialize(conf));

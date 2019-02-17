@@ -6,31 +6,31 @@
         <!-- defines all extractors -->
         <property name="extractors">
             <list>
-                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.PropertyExtractorEntry">
+                <bean class="cn.pidb.engine.blob.PropertyExtractorEntry">
                     <property name="extractor">
                         <bean class="cn.aipm.CommonPropertyExtractor"/>
                     </property>
                     <property name="domain" value="*"/>
                 </bean>
-                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.PropertyExtractorEntry">
+                <bean class="cn.pidb.engine.blob.PropertyExtractorEntry">
                     <property name="extractor">
                         <bean class="cn.aipm.CommonBlobPropertyExtractor"/>
                     </property>
                     <property name="domain" value="blob/*"/>
                 </bean>
-                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.PropertyExtractorEntry">
+                <bean class="cn.pidb.engine.blob.PropertyExtractorEntry">
                     <property name="extractor">
                         <bean class="test.TestAnyPropertyExtractor"/>
                     </property>
                     <property name="domain" value="*"/>
                 </bean>
-                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.PropertyExtractorEntry">
+                <bean class="cn.pidb.engine.blob.PropertyExtractorEntry">
                     <property name="extractor">
                         <bean class="cn.aipm.image.ImageMetaDataExtractor"/>
                     </property>
                     <property name="domain" value="blob/image"/>
                 </bean>
-                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.PropertyExtractorEntry">
+                <bean class="cn.pidb.engine.blob.PropertyExtractorEntry">
                     <property name="extractor">
                         <bean class="cn.aipm.image.PlateNumberExtractor"/>
                     </property>
@@ -41,7 +41,7 @@
         <!-- defines all comparators -->
         <property name="comparators">
             <list>
-                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.ValueComparatorEntry">
+                <bean class="cn.pidb.engine.blob.ValueComparatorEntry">
                     <property name="domain" value="blob/image:blob/image"/>
                     <property name="threshold" value="0.7"/>
                     <property name="namedComparators">
@@ -52,7 +52,7 @@
                         </map>
                     </property>
                 </bean>
-                <bean class="cn.pidb.engine.blob.CypherPluginRegistry.ValueComparatorEntry">
+                <bean class="cn.pidb.engine.blob.ValueComparatorEntry">
                     <property name="domain" value="string:string"/>
                     <property name="threshold" value="0.7"/>
                     <property name="namedComparators">
