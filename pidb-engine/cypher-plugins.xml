@@ -20,12 +20,6 @@
                 </bean>
                 <bean class="cn.pidb.engine.cypherplus.PropertyExtractorEntry">
                     <property name="extractor">
-                        <bean class="test.TestAnyPropertyExtractor"/>
-                    </property>
-                    <property name="domain" value="*"/>
-                </bean>
-                <bean class="cn.pidb.engine.cypherplus.PropertyExtractorEntry">
-                    <property name="extractor">
                         <bean class="cn.aipm.image.ImageMetaDataExtractor"/>
                     </property>
                     <property name="domain" value="blob/image"/>
