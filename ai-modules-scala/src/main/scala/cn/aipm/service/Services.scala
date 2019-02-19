@@ -10,30 +10,25 @@ import scala.collection.immutable.Map
 import scala.util.parsing.json.JSON
 
 
-object Services {
-
-  val configures = {
-    val filePath =System.getProperty("user.dir") + "/ai-services.conf"
-    val prop = new Properties()
-    val configures = HashMap[String,String]()
-    try {
-      val in = new BufferedInputStream(new FileInputStream(filePath))
-      prop.load(in) ///加载属性列表
-      val properties = prop.propertyNames()
-      while(properties.hasMoreElements){
-        val k = properties.nextElement().toString
-        configures.put(k, prop.getProperty(k))
-      }
-      in.close()
-    } catch {
-      case e: Exception =>
-        System.out.println(e)
+class Services(private val _aipmHttpHostUrl:String) {
+  val servicesPath = Map(
+    "FaceSim"-> "service/face/similarity/",
+    "FaceInPhoto"-> "service/face/in_photo/",
+    "PlateNumber"-> "service/plate/",
+    "ClassifyAnimal"-> "service/classify/dogorcat/"
+  )
+  def getServiceUrl(name:String):String = {
+    if (_aipmHttpHostUrl.endsWith("/")){
+      _aipmHttpHostUrl + servicesPath(name)
     }
-    configures
+    else{
+      _aipmHttpHostUrl + "/" + servicesPath(name)
+    }
   }
 
   def computeFaceSimilarity(img1InputStream:InputStream,img2InputStream:InputStream): Double={
-    val serviceUrl = configures("FaceSimilarityServiceUrl")
+    val serviceUrl = getServiceUrl("FaceSim")
+    print(serviceUrl)
 
     val contents = Map("image1" -> img1InputStream, "image2" -> img2InputStream)
 
@@ -51,7 +46,7 @@ object Services {
 
 
   def isFaceInPhoto(faceImgInputStream:InputStream,photoImgInputStream:InputStream): Boolean={
-    val serviceUrl = configures("FaceInPhotoServiceUrl")
+    val serviceUrl = getServiceUrl("FaceInPhoto")
 
     val contents = Map("image1" -> faceImgInputStream, "image2" -> photoImgInputStream)
 
@@ -69,7 +64,7 @@ object Services {
 
 
   def extractPlateNumber(img1InputStream:InputStream): String= {
-    val serviceUrl = configures("PlateNumberServiceUrl")
+    val serviceUrl = getServiceUrl("PlateNumber")
 
     val contents = Map("image1" -> img1InputStream)
 
@@ -85,7 +80,7 @@ object Services {
   }
 
   def classifyAnimal(img1InputStream:InputStream): String= {
-    val serviceUrl = configures("AnimalClassifyServiceUrl")
+    val serviceUrl = getServiceUrl("ClassifyAnimal")
 
     val contents = Map("image1" -> img1InputStream)
 
@@ -101,4 +96,8 @@ object Services {
 
   }
 
+}
+
+object Services{
+  def initialize(aipmHttpHostUrl:String):Services = new Services(aipmHttpHostUrl)
 }
