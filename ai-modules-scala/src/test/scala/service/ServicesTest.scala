@@ -38,4 +38,7 @@ class ServicesTest {
     val animal = Services.classifyAnimal(in1)
     print(animal)
   }
+
+
+
 }

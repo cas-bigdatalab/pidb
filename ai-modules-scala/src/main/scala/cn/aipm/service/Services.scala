@@ -49,6 +49,25 @@ object Services {
 
   }
 
+
+  def isFaceInPhoto(faceImgInputStream:InputStream,photoImgInputStream:InputStream): Boolean={
+    val serviceUrl = configures("FaceInPhotoServiceUrl")
+
+    val contents = Map("image1" -> faceImgInputStream, "image2" -> photoImgInputStream)
+
+    val res = WebUtils.doPost(serviceUrl,inStreamContents = contents)
+    val json:Option[Any] = JSON.parseFull(res)
+    val map:Map[String,Any] = json.get.asInstanceOf[Map[String, Any]]
+    if(map("res").asInstanceOf[Boolean]){
+      map("value").asInstanceOf[Boolean]
+    }
+    else{
+      false
+    }
+
+  }
+
+
   def extractPlateNumber(img1InputStream:InputStream): String= {
     val serviceUrl = configures("PlateNumberServiceUrl")
 

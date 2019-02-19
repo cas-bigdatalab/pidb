@@ -26,5 +26,14 @@ class FaceSimilarityComparatorTest {
     print(res)
   }
 
+  @Test
+  def test3():Unit={
+    var imagePath1 = "E:\\[pidb-ai-code]\\plate_number\\test1.jpg"
+    var imagePath2 = "E:\\[pidb-ai-code]\\plate_number\\test1.jpg"
+    val simComparator = new FaceSimilarityComparator()
+    val res = simComparator.compare(Blob.fromFile(new File(imagePath1)),Blob.fromFile(new File(imagePath2)))
+    print(res)
+  }
+
 
 }

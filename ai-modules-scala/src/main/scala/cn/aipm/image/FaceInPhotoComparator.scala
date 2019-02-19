@@ -5,14 +5,11 @@ import cn.aipm.service.Services
 import cn.pidb.util.Config
 import cn.pidb.util.ConfigEx._
 
-
-class FaceSimilarityComparator extends ValueComparator {
-  def compare(blob1: Any, blob2: Any): Double = {
-    blob1.asInstanceOf[Blob].offerStream(is1=>{
-
-      blob2.asInstanceOf[Blob].offerStream(is2=>{
-
-        Services.computeFaceSimilarity(is1,is2)
+class FaceInPhotoComparator extends ValueComparator{
+  def compare(faceBlob: Any, photoBlob: Any): Double = {
+    faceBlob.asInstanceOf[Blob].offerStream(is1=>{
+      photoBlob.asInstanceOf[Blob].offerStream(is2=>{
+         if (Services.isFaceInPhoto(is1,is2)) 1 else 0
       })
 
     })
