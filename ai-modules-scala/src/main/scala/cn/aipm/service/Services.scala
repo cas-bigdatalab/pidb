@@ -65,4 +65,21 @@ object Services {
     }
   }
 
+  def classifyAnimal(img1InputStream:InputStream): String= {
+    val serviceUrl = configures("AnimalClassifyServiceUrl")
+
+    val contents = Map("image1" -> img1InputStream)
+
+    val res = WebUtils.doPost(serviceUrl, inStreamContents = contents)
+    val json: Option[Any] = JSON.parseFull(res)
+    val map: Map[String, Any] = json.get.asInstanceOf[Map[String, Any]]
+    if (map("res").asInstanceOf[Boolean]) {
+      map("value").asInstanceOf[String]
+    }
+    else {
+      ""
+    }
+
+  }
+
 }

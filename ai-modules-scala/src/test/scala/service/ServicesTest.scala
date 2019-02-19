@@ -29,4 +29,13 @@ class ServicesTest {
     val plate = Services.extractPlateNumber(in1)
     print(plate)
   }
+
+  @Test
+  def test3(): Unit = {
+    var image_path1 = "C:\\Users\\hai\\Desktop\\cat.1.jpg"
+    val file1 = new File(image_path1)
+    val in1 = new FileInputStream(file1)
+    val animal = Services.classifyAnimal(in1)
+    print(animal)
+  }
 }
