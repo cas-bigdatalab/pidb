@@ -35,6 +35,14 @@ class TestImageSimilarityComparator extends ValueComparator {
   override def initialize(conf: Config): Unit = {}
 }
 
+class TestImageSetComparator extends SetComparator {
+  def contains(blob1: Any, other: Any): Boolean = {
+    true
+  }
+
+  override def initialize(conf: Config): Unit = {}
+}
+
 class TestImagePlateNumberComparator extends ValueComparator {
   def compare(blob1: Any, other: Any): Double = {
     if ("京NB6666".matches(other.asInstanceOf[String]))

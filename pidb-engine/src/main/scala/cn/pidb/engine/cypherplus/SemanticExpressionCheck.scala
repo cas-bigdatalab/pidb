@@ -16,6 +16,7 @@
  */
 package org.neo4j.cypher.internal.frontend.v3_4.semantics
 
+import cn.pidb.engine.cypherplus._
 import org.neo4j.cypher.internal.frontend.v3_4.ast.rewriters.DesugaredMapProjection
 import org.neo4j.cypher.internal.frontend.v3_4.semantics.SemanticExpressionCheck._
 import org.neo4j.cypher.internal.frontend.v3_4.{SemanticCheck, TypeGenerator}
@@ -106,13 +107,34 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:ValueLike =>
+      ////NOTE: semantic <!--
+
+      case x:SemanticLike =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:ValueCompare =>
+      case x:CustomProperty =>
+        check(ctx, x.map) chain
+          expectType(CTAny.covariant, x.map) chain //NOTE: enable property of blob property
+          specifyType(CTAny.covariant, x)
+
+      case x:SemanticCompare =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
+
+      case x:SemanticUnlike =>
+        check(ctx, x.arguments) chain
+          checkTypes(x, x.signatures)
+
+      case x:SemanticBroader =>
+        check(ctx, x.arguments) chain
+          checkTypes(x, x.signatures)
+
+      case x:SemanticNarrower =>
+        check(ctx, x.arguments) chain
+          checkTypes(x, x.signatures)
+
+      ////NOTE: semantic -->
 
       case x:And =>
         check(ctx, x.arguments) chain
@@ -195,11 +217,6 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
 
       case x:CoerceTo =>
         check(ctx, x.expr) chain expectType(x.typ.covariant, x.expr)
-
-      case x:CustomProperty =>
-        check(ctx, x.map) chain
-          expectType(CTAny.covariant, x.map) chain //NOTE: enable property of blob property
-          specifyType(CTAny.covariant, x)
 
       case x:Property =>
         check(ctx, x.map) chain

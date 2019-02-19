@@ -4,7 +4,6 @@ import cn.pidb.blob._
 import cn.pidb.util.{Config, Logging}
 
 import scala.beans.BeanProperty
-import scala.collection.JavaConversions._
 
 /**
   * Created by bluejoe on 2019/1/31.
@@ -14,7 +13,9 @@ trait CustomPropertyProvider {
 }
 
 trait ValueMatcher {
-  def like(a: Any, b: Any): Boolean;
+  def like(a: Any, b: Any, algoName: Option[String]): Boolean;
+
+  def contains(a: Any, b: Any, algoName: Option[String]): Boolean;
 
   def compare(a: Any, b: Any, algoName: Option[String]): Double;
 }
@@ -31,20 +32,32 @@ object ValueType {
   def typeNameOf(a: Any, b: Any): String = s"${typeNameOf(a)}:${typeNameOf(b)}"
 }
 
-class ValueComparatorEntry {
-  @BeanProperty var domain: String = "";
-  @BeanProperty var threshold: Double = 0.7;
-  @BeanProperty var namedComparators: java.util.Map[String, ValueComparator] = _;
-}
-
-class PropertyExtractorEntry {
+class DomainExtractorEntry {
   @BeanProperty var domain: String = "";
   @BeanProperty var extractor: PropertyExtractor = _;
 }
 
+class DomainComparatorEntry {
+  @BeanProperty var domain: String = "";
+  @BeanProperty var threshold: Double = 0.7;
+  @BeanProperty var valueComparators: Array[NamedValueComparatorEntry] = _;
+  @BeanProperty var setComparators: Array[NamedSetComparatorEntry] = _;
+}
+
+class NamedSetComparatorEntry {
+  @BeanProperty var name: String = "";
+  @BeanProperty var comparator: SetComparator = _;
+}
+
+class NamedValueComparatorEntry {
+  @BeanProperty var name: String = "";
+  @BeanProperty var comparator: ValueComparator = _;
+}
+
+
 class CypherPluginRegistry {
-  @BeanProperty var extractors: Array[PropertyExtractorEntry] = Array();
-  @BeanProperty var comparators: Array[ValueComparatorEntry] = Array();
+  @BeanProperty var extractors: Array[DomainExtractorEntry] = Array();
+  @BeanProperty var comparators: Array[DomainComparatorEntry] = Array();
 
   def createCustomPropertyProvider(conf: Config) = new CustomPropertyProvider {
     extractors.foreach(_.extractor.initialize(conf));
@@ -79,44 +92,75 @@ class CypherPluginRegistry {
   }
 
   def createValueComparatorRegistry(conf: Config) = new ValueMatcher with Logging {
-    val groupedComparators = comparators.map { x =>
-      (x.getDomain, x)
+    //all value comparators
+    val valueGroupedComparators = comparators.map { x =>
+      (x.getDomain, (x.valueComparators.map(x => x.name -> x.comparator).toMap -> x))
     }.toMap
 
-    comparators.flatMap(_.namedComparators.values()).foreach(_.initialize(conf));
+    comparators.flatMap(_.valueComparators).map(_.comparator).foreach(_.initialize(conf));
 
-    def like(a: Any, b: Any): Boolean = {
-      _match(a, b, None) match {
+    //all set comparators
+    val groupedSetComparators = comparators.map { x =>
+      (x.getDomain, (x.setComparators.map(x => x.name -> x.comparator).toMap -> x))
+    }.toMap
+
+    comparators.flatMap(_.setComparators).map(_.comparator).foreach(_.initialize(conf));
+
+    def like(a: Any, b: Any, algoName: Option[String]): Boolean = {
+      _match(a, b, algoName) match {
         case (x, null, null) => x != 0.0
         case (d, _, entry) => d > entry.threshold
       }
     }
 
-    private def _match(a: Any, b: Any, algoName: Option[String]): (Double, ValueComparator, ValueComparatorEntry) = {
+    private def _match(a: Any, b: Any, algoName: Option[String]): (Double, ValueComparator, DomainComparatorEntry) = {
       (a, b) match {
         case (null, null) => (1.0, null, null)
         case (null, _) => (0.0, null, null)
         case (_, null) => (0.0, null, null)
         case _ =>
-          val (a2, b2, entry) = groupedComparators.get(ValueType.typeNameOf(a, b))
+          val (a2, b2, (map, entry)) = valueGroupedComparators.get(ValueType.typeNameOf(a, b))
             .map {
               (a, b, _)
             }.getOrElse {
-            (b, a, groupedComparators.get(ValueType.typeNameOf(b, a)).getOrElse(throw new NoSuitableComparatorException(a, b)))
+            (b, a, valueGroupedComparators.get(ValueType.typeNameOf(b, a)).getOrElse(throw new NoSuitableComparatorException(a, b)))
           }
 
-          val comp = algoName.map(
-            mapAsScalaMap(entry.namedComparators).get(_)
+          val comparator = algoName.map(
+            map.get(_)
               .getOrElse(throw new UnknownAlgorithmException(algoName.get)))
-            .getOrElse(entry.namedComparators.headOption.map(_._2)
+            .getOrElse(map.headOption.map(_._2)
               .getOrElse(throw new NoSuitableComparatorException(a, b)))
 
-          (comp.compare(a2, b2), comp, entry)
+          (comparator.compare(a2, b2), comparator, entry)
       }
     }
 
     override def compare(a: Any, b: Any, algoName: Option[String]): Double = {
       _match(a, b, algoName)._1
+    }
+
+    override def contains(a: Any, b: Any, algoName: Option[String]): Boolean = {
+      (a, b) match {
+        case (null, null) => true
+        case (null, _) => false
+        case (_, null) => true
+        case _ =>
+          val (a2, b2, (map, entry)) = groupedSetComparators.get(ValueType.typeNameOf(a, b))
+            .map {
+              (a, b, _)
+            }.getOrElse {
+            (b, a, groupedSetComparators.get(ValueType.typeNameOf(b, a)).getOrElse(throw new NoSuitableComparatorException(a, b)))
+          }
+
+          val comparator = algoName.map(
+            map.get(_)
+              .getOrElse(throw new UnknownAlgorithmException(algoName.get)))
+            .getOrElse(map.headOption.map(_._2)
+              .getOrElse(throw new NoSuitableComparatorException(a, b)))
+
+          comparator.contains(a2, b2)
+      }
     }
   }
 }

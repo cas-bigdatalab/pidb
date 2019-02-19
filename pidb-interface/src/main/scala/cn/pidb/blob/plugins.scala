@@ -18,3 +18,12 @@ trait ValueComparator {
 
   def initialize(conf: Config);
 }
+
+trait SetComparator {
+  /**
+    * @return 0~1
+    */
+  def contains(a: Any, b: Any): Boolean;
+
+  def initialize(conf: Config);
+}

@@ -19,9 +19,10 @@
  */
 package org.neo4j.cypher.internal.runtime.interpreted.commands.convert
 
+import cn.pidb.engine.cypherplus._
 import org.neo4j.cypher.internal.frontend.v3_4.ast.rewriters.DesugaredMapProjection
 import org.neo4j.cypher.internal.runtime.interpreted._
-import org.neo4j.cypher.internal.runtime.interpreted.commands.expressions.{Expression => CommandExpression, InequalitySeekRangeExpression, PointDistanceSeekRangeExpression, ValueCompareExpression, ValueLikeExpression}
+import org.neo4j.cypher.internal.runtime.interpreted.commands.expressions.{Expression => CommandExpression, InequalitySeekRangeExpression, PointDistanceSeekRangeExpression}
 import org.neo4j.cypher.internal.runtime.interpreted.commands.predicates._
 import org.neo4j.cypher.internal.runtime.interpreted.commands.values.TokenType.PropertyKey
 import org.neo4j.cypher.internal.runtime.interpreted.commands.values.UnresolvedRelType
@@ -53,9 +54,12 @@ object CommunityExpressionConverter extends ExpressionConverter {
       case e: ast.RegexMatch => regexMatch(e, self)
 
       ////NOTE: cypher plus
-      case e: ast.ValueLike => ValueLikeExpression(self.toCommandExpression(e.lhs), if (e.threshold < 0) 0.7 else e.threshold, self.toCommandExpression(e.rhs))
-      case e: ast.ValueCompare => ValueCompareExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
-      case e: ast.CustomProperty => toCommandCustomProperty(e, self)
+      case e: SemanticLike => SemanticLikeExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
+      case e: SemanticCompare => SemanticCompareExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
+      case e: SemanticUnlike => SemanticUnlikeExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
+      case e: SemanticNarrower => SemanticNarrowerExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
+      case e: SemanticBroader => SemanticBroaderExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
+      case e: CustomProperty => CustomPropertyExpression(self.toCommandExpression(e.map), PropertyKey(e.propertyKey.name))
       ////NOTE: end
 
       case e: ast.In => in(e, self)
@@ -322,9 +326,6 @@ object CommunityExpressionConverter extends ExpressionConverter {
 
   private def toCommandProperty(e: ast.LogicalProperty, self: ExpressionConverters): commandexpressions.Property =
     commandexpressions.Property(self.toCommandExpression(e.map), PropertyKey(e.propertyKey.name))
-
-  private def toCommandCustomProperty(e: ast.CustomProperty, self: ExpressionConverters): commandexpressions.CustomProperty =
-    commandexpressions.CustomProperty(self.toCommandExpression(e.map), PropertyKey(e.propertyKey.name))
 
   private def toCommandExpression(expression: Option[ast.Expression], self: ExpressionConverters): Option[CommandExpression] =
     expression.map(self.toCommandExpression)

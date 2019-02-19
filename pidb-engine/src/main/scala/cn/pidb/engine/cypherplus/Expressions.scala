@@ -16,8 +16,9 @@
  */
 package org.neo4j.cypher.internal.frontend.v3_4.parser
 
+import cn.pidb.engine.cypherplus._
 import org.neo4j.cypher.internal.util.v3_4.InputPosition
-import org.neo4j.cypher.internal.v3_4.expressions.{ValueCompare, ValueLike, RegexMatch}
+import org.neo4j.cypher.internal.v3_4.expressions._
 import org.neo4j.cypher.internal.v3_4.{expressions => ast}
 import org.parboiled.scala._
 
@@ -133,12 +134,27 @@ trait Expressions extends Parser
   private def Expression3: Rule1[ast.Expression] = rule("an expression") {
     Expression2 ~ zeroOrMore(WS ~ (
       group(operator("=~") ~~ Expression2) ~~>> (RegexMatch(_: ast.Expression, _))
-        | group(keyword("LIKE") ~~ optional(operator("/") ~~ NumberLiteral) ~~ Expression2) ~~>>
+
+        ////NOTE: semantic operator
+
+        | group(keyword("~:") ~~ optional(PropertyKeyName) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          ValueLike(a, b.map(_.value.toString.toDouble).getOrElse(-1), c)) //TODO: like
-        | group(operator("%%") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
+          SemanticLike(a, b.map(_.name), c))
+        | group(keyword("!:") ~~ optional(PropertyKeyName) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          ValueCompare(a, b.map(_.name), c)) //TODO: like
+          SemanticUnlike(a, b.map(_.name), c))
+        | group(operator("::") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
+        ((a: ast.Expression, b, c) =>
+          SemanticCompare(a, b.map(_.name), c))
+        | group(operator(">:") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
+        ((a: ast.Expression, b, c) =>
+          SemanticBroader(a, b.map(_.name), c))
+        | group(operator("<:") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
+        ((a: ast.Expression, b, c) =>
+          SemanticNarrower(a, b.map(_.name), c))
+
+        ////NOTE: semantic operator
+
         | group(keyword("IN") ~~ Expression2) ~~>> (ast.In(_: ast.Expression, _))
         | group(keyword("STARTS WITH") ~~ Expression2) ~~>> (ast.StartsWith(_: ast.Expression, _))
         | group(keyword("ENDS WITH") ~~ Expression2) ~~>> (ast.EndsWith(_: ast.Expression, _))
@@ -151,7 +167,7 @@ trait Expressions extends Parser
   private def Expression2: Rule1[ast.Expression] = rule("an expression") {
     Expression1 ~ zeroOrMore(WS ~ (
       PropertyLookup
-        | operator("->") ~~ (PropertyKeyName ~~>> (ast.CustomProperty(_: ast.Expression, _))) ////NOTE: cypher plus
+        | operator("->") ~~ (PropertyKeyName ~~>> (CustomProperty(_: ast.Expression, _))) ////NOTE: cypher plus
         | NodeLabels ~~>> (ast.HasLabels(_: ast.Expression, _))
         | "[" ~~ Expression ~~ "]" ~~>> (ast.ContainerIndex(_: ast.Expression, _))
         | "[" ~~ optional(Expression) ~~ ".." ~~ optional(Expression) ~~ "]" ~~>> (ast.ListSlice(_: ast.Expression, _, _))
