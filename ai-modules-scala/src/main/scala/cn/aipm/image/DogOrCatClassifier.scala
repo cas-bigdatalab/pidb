@@ -16,6 +16,6 @@ class DogOrCatClassifier extends PropertyExtractor {
   })
 
   override def initialize(conf: Config): Unit = {
-    aipmHttpHostUrl = ConfigEx.config2Ex(conf).getRequiredValueAsString("aipmHttpHostUrl")
+    aipmHttpHostUrl = ConfigEx.config2Ex(conf).getRequiredValueAsString("aipm.http.host.url")
   }
 }

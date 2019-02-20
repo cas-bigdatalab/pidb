@@ -3,7 +3,7 @@ import cn.pidb.util.Config
 
 class ConfigTemp extends Config{
   override def getRaw(name: String): Option[String] = {
-    val configs = Map("aipmHttpHostUrl"->"http://10.0.86.128:8081/")
+    val configs = Map("aipm.http.host.url"->"http://10.0.86.128:8081/")
     configs.get(name)
   }
 }

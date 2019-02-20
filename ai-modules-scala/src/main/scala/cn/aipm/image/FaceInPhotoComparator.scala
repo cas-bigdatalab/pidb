@@ -5,13 +5,13 @@ import cn.aipm.service.Services
 import cn.pidb.util.{Config, ConfigEx}
 import cn.pidb.util.ConfigEx._
 
-class FaceInPhotoComparator extends ValueComparator{
+class FaceInPhotoComparator extends SetComparator {
   var aipmHttpHostUrl = "http://127.0.0.1/"
 
-  def compare(faceBlob: Any, photoBlob: Any): Double = {
+  def contains( photoBlob: Any,faceBlob: Any): Boolean = {
     faceBlob.asInstanceOf[Blob].offerStream(is1=>{
       photoBlob.asInstanceOf[Blob].offerStream(is2=>{
-         if (Services.initialize(aipmHttpHostUrl).isFaceInPhoto(is1,is2)) 1 else 0
+         Services.initialize(aipmHttpHostUrl).isFaceInPhoto(is1,is2)
       })
 
     })
@@ -19,6 +19,6 @@ class FaceInPhotoComparator extends ValueComparator{
   }
 
   override def initialize(conf: Config): Unit = {
-    aipmHttpHostUrl = ConfigEx.config2Ex(conf).getRequiredValueAsString("aipmHttpHostUrl")
+    aipmHttpHostUrl = ConfigEx.config2Ex(conf).getRequiredValueAsString("aipm.http.host.url")
   }
 }
