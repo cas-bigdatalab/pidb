@@ -40,6 +40,15 @@ class ServicesTest {
     print(animal)
   }
 
+  @Test
+  def test4(): Unit = {
+    val audio_path1 = "C:\\Users\\hai\\Desktop\\temp.wav"
+    val file1 = new File(audio_path1)
+    val in1 = new FileInputStream(file1)
+    val content = Services.initialize(hostUrl).mandarinASR(in1)
+    print(content)
+  }
+
 
 
 }
