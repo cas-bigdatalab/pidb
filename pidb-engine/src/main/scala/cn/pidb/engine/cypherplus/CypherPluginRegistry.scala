@@ -40,8 +40,8 @@ class DomainExtractorEntry {
 class DomainComparatorEntry {
   @BeanProperty var domain: String = "";
   @BeanProperty var threshold: Double = 0.7;
-  @BeanProperty var valueComparators: Array[NamedValueComparatorEntry] = _;
-  @BeanProperty var setComparators: Array[NamedSetComparatorEntry] = _;
+  @BeanProperty var valueComparators: Array[NamedValueComparatorEntry] = Array();
+  @BeanProperty var setComparators: Array[NamedSetComparatorEntry] = Array();
 }
 
 class NamedSetComparatorEntry {

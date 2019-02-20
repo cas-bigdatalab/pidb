@@ -131,7 +131,7 @@ case class SemanticBroaderExpression(lhsExpr: Expression, algorithm: Option[Stri
 case class SemanticUnlikeExpression(lhsExpr: Expression, algorithm: Option[String], rightExpr: Expression)
                                    (implicit converter: TextValue => TextValue = identity) extends Predicate {
   def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
-    new SemanticUnlikeExpression(lhsExpr, algorithm, rightExpr)(converter).isMatch(m, state).map(!_);
+    new SemanticLikeExpression(lhsExpr, algorithm, rightExpr)(converter).isMatch(m, state).map(!_);
   }
 
   override def toString: String = lhsExpr.toString() + " ~= /" + rightExpr.toString() + "/"

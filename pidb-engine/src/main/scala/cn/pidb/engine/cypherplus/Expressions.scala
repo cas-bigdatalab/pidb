@@ -137,10 +137,10 @@ trait Expressions extends Parser
 
         ////NOTE: semantic operator
 
-        | group(keyword("~:") ~~ optional(PropertyKeyName) ~~ Expression2) ~~>>
+        | group(operator("~:") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
           SemanticLike(a, b.map(_.name), c))
-        | group(keyword("!:") ~~ optional(PropertyKeyName) ~~ Expression2) ~~>>
+        | group(operator("!:") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
           SemanticUnlike(a, b.map(_.name), c))
         | group(operator("::") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
