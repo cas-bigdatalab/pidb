@@ -59,7 +59,7 @@
                             <bean class="cn.pidb.engine.cypherplus.NamedSetComparatorEntry">
                                 <property name="name" value="face"/>
                                 <property name="comparator">
-                                    <bean class="test.TestImageSetComparator"/>
+                                    <bean class="cn.aipm.image.FaceInPhotoComparator"/>
                                 </property>
                             </bean>
                         </list>
