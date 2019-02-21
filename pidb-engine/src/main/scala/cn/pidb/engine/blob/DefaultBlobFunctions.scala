@@ -36,10 +36,12 @@ class DefaultBlobFunctions {
     val en = resp.getEntity;
     val blob = Blob.fromInputStreamSource(new InputStreamSource() {
       override def offerStream[T](consume: (InputStream) => T): T = {
-        consume(en.getContent)
+        val t = consume(en.getContent)
+        client.close()
+        t
       }
     }, en.getContentLength, Some(MimeType.fromText(en.getContentType.getValue)));
-    client.close()
+
     blob
   }
 
