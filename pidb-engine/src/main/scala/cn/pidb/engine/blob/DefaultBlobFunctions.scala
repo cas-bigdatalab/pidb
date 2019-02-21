@@ -1,9 +1,11 @@
 package cn.pidb.engine.blob
 
-import java.io.{File, FileInputStream}
+import java.io.{File, FileInputStream, InputStream}
 
-import cn.pidb.blob.{Blob, MimeType}
+import cn.pidb.blob.{Blob, InputStreamSource, MimeType}
 import org.apache.commons.io.IOUtils
+import org.apache.http.client.methods.HttpGet
+import org.apache.http.impl.client.HttpClientBuilder
 import org.neo4j.procedure.{Description, Name, UserFunction}
 
 /**
@@ -23,6 +25,22 @@ class DefaultBlobFunctions {
     }
 
     Blob.fromFile(file);
+  }
+
+  @UserFunction("Blob.fromURL")
+  @Description("load blob from an url")
+  def fromURL(@Name("url") url: String): Blob = {
+    val client = HttpClientBuilder.create().build();
+    val get = new HttpGet(url);
+    val resp = client.execute(get);
+    val en = resp.getEntity;
+    val blob = Blob.fromInputStreamSource(new InputStreamSource() {
+      override def offerStream[T](consume: (InputStream) => T): T = {
+        consume(en.getContent)
+      }
+    }, en.getContentLength, Some(MimeType.fromText(en.getContentType.getValue)));
+    client.close()
+    blob
   }
 
   @UserFunction("Blob.fromUTF8String")
