@@ -1,12 +1,12 @@
-package cn.pidb.engine.refactor.buffer
+package cn.pidb.engine.buffer
 
 import java.io.File
 import java.util.concurrent._
 
-import cn.pidb.blob.{Blob, BlobId}
-import cn.pidb.engine.refactor.buffer.exception.NotBindingException
-import cn.pidb.engine.refactor.storage.{Bufferable, Storage}
-import cn.pidb.engine.storage.Closable
+import cn.pidb.blob.BlobIdFactory
+import cn.pidb.blob.storage.Closable
+import cn.pidb.engine.storage.{Bufferable, Storage}
+import cn.pidb.engine.buffer.exception.NotBindingException
 import cn.pidb.util.Config
 import cn.pidb.util.ConfigEx._
 
@@ -39,7 +39,7 @@ trait Buffer extends Closable {
   */
 class RollBackBuffer(tempStorage : Storage with Bufferable, externalStorage : Storage
                      , time : Long) extends Buffer with RollBack {
-  override def initialize(storeDir: File, conf: Config): Unit = {
+  override def initialize(storeDir: File, blobIdFac : BlobIdFactory, conf: Config): Unit = {
     bind(tempStorage, externalStorage)
     val failureLog = conf.getValueAsString("blob.storage.rollback.logpath","/log/rb.log")
     val logFile = new File(failureLog)

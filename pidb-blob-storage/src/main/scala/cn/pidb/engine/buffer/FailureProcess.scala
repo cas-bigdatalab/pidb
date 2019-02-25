@@ -1,7 +1,6 @@
-package cn.pidb.engine.refactor.buffer
+package cn.pidb.engine.buffer
 
-import cn.pidb.engine.BlobIdFactory
-import cn.pidb.engine.refactor.storage.Storage
+import cn.pidb.engine.storage.Storage
 trait FailureProcess {}
 trait NotInParallel extends FailureProcess {
 
@@ -14,7 +13,7 @@ trait InParallel extends FailureProcess {}
   */
 trait RollBack extends NotInParallel {
   def RollBack(f : Storage, rollBackLog : RollBackLogReader) : Unit = {
-    f.deleteBatch(rollBackLog.map(BlobIdFactory.fromString).toList)
+    f.deleteBatch(rollBackLog.map(f.getIdFac.fromLiteralString).toList)
     rollBackLog.clean()
   }
 }
