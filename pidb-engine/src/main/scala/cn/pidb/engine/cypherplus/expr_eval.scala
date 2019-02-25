@@ -21,13 +21,25 @@ package cn.pidb.engine.cypherplus
 
 import cn.pidb.engine.{BlobPropertyStoreService, RuntimeContextHolder}
 import cn.pidb.util.ReflectUtils._
-import org.neo4j.cypher.internal.runtime.interpreted.ExecutionContext
 import org.neo4j.cypher.internal.runtime.interpreted.commands.expressions._
 import org.neo4j.cypher.internal.runtime.interpreted.commands.predicates.Predicate
 import org.neo4j.cypher.internal.runtime.interpreted.commands.values.KeyToken
 import org.neo4j.cypher.internal.runtime.interpreted.pipes.QueryState
+import org.neo4j.cypher.internal.runtime.interpreted.{ExecutionContext, UpdateCountingQueryContext}
 import org.neo4j.values.AnyValue
 import org.neo4j.values.storable._
+
+case class BlobLiteralExpression(url: BlobURL) extends Expression {
+  def apply(ctx: ExecutionContext, state: QueryState): AnyValue = {
+    BlobValue(url.createBlob);
+  }
+
+  override def rewrite(f: (Expression) => Expression): Expression = f(this)
+
+  override def arguments: Seq[Expression] = Nil
+
+  override def symbolTableDependencies: Set[String] = Set()
+}
 
 case class CustomPropertyExpression(mapExpr: Expression, propertyKey: KeyToken)
   extends Expression with Product with Serializable {
@@ -62,9 +74,15 @@ case class SemanticLikeExpression(lhsExpr: Expression, algorithm: Option[String]
       case (Values.NO_VALUE, Values.NO_VALUE) => Some(true)
       case (_, Values.NO_VALUE) => Some(false)
       case (Values.NO_VALUE, _) => Some(false)
-      case (a: Value, b: Value) => Some(state._get("query.inner.transactionalContext.tc.graph.graph.config").
-        asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]()
-        .getValueMatcher.like(a.asObject(), b.asObject(), algorithm))
+      case (a: Value, b: Value) => Some(
+        {
+          if (state.query.isInstanceOf[UpdateCountingQueryContext])
+            state._get("query.inner.inner.transactionalContext.tc.graph.graph.config")
+          else
+            state._get("query.inner.transactionalContext.tc.graph.graph.config")
+        }
+          .asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]()
+          .getValueMatcher.like(a.asObject(), b.asObject(), algorithm))
     }
   }
 
@@ -81,10 +99,10 @@ case class SemanticLikeExpression(lhsExpr: Expression, algorithm: Option[String]
   def symbolTableDependencies = lhsExpr.symbolTableDependencies ++ rightExpr.symbolTableDependencies
 }
 
-case class SemanticNarrowerExpression(lhsExpr: Expression, algorithm: Option[String], rightExpr: Expression)
-                                     (implicit converter: TextValue => TextValue = identity) extends Predicate {
+case class SemanticElementOfExpression(lhsExpr: Expression, algorithm: Option[String], rightExpr: Expression)
+                                      (implicit converter: TextValue => TextValue = identity) extends Predicate {
   def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
-    new SemanticBroaderExpression(lhsExpr, algorithm, rightExpr)(converter).isMatch(m, state).map(!_)
+    new SemanticContainExpression(rightExpr, algorithm, lhsExpr)(converter).isMatch(m, state)
   }
 
   override def toString: String = lhsExpr.toString() + " ~= /" + rightExpr.toString() + "/"
@@ -92,7 +110,7 @@ case class SemanticNarrowerExpression(lhsExpr: Expression, algorithm: Option[Str
   def containsIsNull = false
 
   def rewrite(f: (Expression) => Expression) = f(rightExpr.rewrite(f) match {
-    case other => SemanticNarrowerExpression(lhsExpr.rewrite(f), algorithm, other)(converter)
+    case other => SemanticElementOfExpression(lhsExpr.rewrite(f), algorithm, other)(converter)
   })
 
   def arguments = Seq(lhsExpr, rightExpr)
@@ -100,7 +118,7 @@ case class SemanticNarrowerExpression(lhsExpr: Expression, algorithm: Option[Str
   def symbolTableDependencies = lhsExpr.symbolTableDependencies ++ rightExpr.symbolTableDependencies
 }
 
-case class SemanticBroaderExpression(lhsExpr: Expression, algorithm: Option[String], rightExpr: Expression)
+case class SemanticContainExpression(lhsExpr: Expression, algorithm: Option[String], rightExpr: Expression)
                                     (implicit converter: TextValue => TextValue = identity) extends Predicate {
   def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
     val lValue = lhsExpr(m, state)
@@ -120,7 +138,7 @@ case class SemanticBroaderExpression(lhsExpr: Expression, algorithm: Option[Stri
   def containsIsNull = false
 
   def rewrite(f: (Expression) => Expression) = f(rightExpr.rewrite(f) match {
-    case other => SemanticBroaderExpression(lhsExpr.rewrite(f), algorithm, other)(converter)
+    case other => SemanticContainExpression(lhsExpr.rewrite(f), algorithm, other)(converter)
   })
 
   def arguments = Seq(lhsExpr, rightExpr)

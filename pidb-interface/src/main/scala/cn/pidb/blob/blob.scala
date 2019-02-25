@@ -1,8 +1,11 @@
 package cn.pidb.blob
 
 import java.io._
+import java.net.URL
 
 import org.apache.commons.io.IOUtils
+import org.apache.http.client.methods.HttpGet
+import org.apache.http.impl.client.HttpClientBuilder
 
 trait InputStreamSource {
   /**
@@ -75,7 +78,7 @@ object Blob {
         fis.close();
         t;
       }
-    }, 0, Some(MimeType.fromText("application/octet-stream")));
+    }, bytes.length, Some(MimeType.fromText("application/octet-stream")));
   }
 
   val EMPTY: Blob = fromBytes(Array[Byte]());
@@ -97,5 +100,35 @@ object Blob {
     },
       file.length(),
       mimeType);
+  }
+
+  def fromHttpURL(url: String): Blob = {
+    val client = HttpClientBuilder.create().build();
+    val get = new HttpGet(url);
+    val resp = client.execute(get);
+    val en = resp.getEntity;
+    val blob = Blob.fromInputStreamSource(new InputStreamSource() {
+      override def offerStream[T](consume: (InputStream) => T): T = {
+        val t = consume(en.getContent)
+        client.close()
+        t
+      }
+    }, en.getContentLength, Some(MimeType.fromText(en.getContentType.getValue)));
+
+    blob
+  }
+
+  def fromURL(url: String): Blob = {
+    val lower = url.toLowerCase();
+    if (lower.startsWith("http://") || lower.startsWith("https://")) {
+      fromHttpURL(url);
+    }
+    else if (lower.startsWith("file://")) {
+      fromFile(new File(url.substring(lower.indexOf("//") + 1)));
+    }
+    else {
+      //ftp, ftps?
+      fromBytes(IOUtils.toByteArray(new URL(url)));
+    }
   }
 }

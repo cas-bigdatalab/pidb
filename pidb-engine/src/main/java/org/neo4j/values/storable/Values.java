@@ -42,12 +42,12 @@ import static org.neo4j.values.storable.TimeValue.time;
 
 /**
  * Entry point to the values library.
- * <p>
+ * <p/>
  * The values library centers around the Value class, which represents a value in Neo4j. Values can be correctly
  * checked for equality over different primitive representations, including consistent hashCodes and sorting.
- * <p>
+ * <p/>
  * To create Values use the factory methods in the Values class.
- * <p>
+ * <p/>
  * Values come in two major categories: Storable and Virtual. Storable values are valid values for
  * node, relationship and graph properties. Virtual values are not supported as property values, but might be created
  * and returned as part of cypher execution. These include Node, Relationship and Path.
@@ -77,7 +77,7 @@ public final class Values {
     /**
      * Default value comparator. Will correctly compare all storable values and order the value groups according the
      * to orderability group.
-     * <p>
+     * <p/>
      * To get Comparability semantics, use .ternaryCompare
      */
     public static final ValueComparator COMPARATOR = new ValueComparator(ValueGroup::compareTo);
@@ -213,9 +213,14 @@ public final class Values {
     }
 
     //NOTE: blob[]
+    public static BlobValue blobValue(Blob value) {
+        return new BlobValue(value);
+    }
+
     public static BlobArray blobArray(Blob... value) {
         return new BlobArray(value);
     }
+    //end of NOTE
 
     public static ByteArray byteArray(byte[] value) {
         return new ByteArray(value);
@@ -402,11 +407,11 @@ public final class Values {
 
     /**
      * Generic value factory method.
-     * <p>
+     * <p/>
      * Beware, this method is intended for converting externally supplied values to the internal Value type, and to
      * make testing convenient. Passing a Value as in parameter should never be needed, and will throw an
      * UnsupportedOperationException.
-     * <p>
+     * <p/>
      * This method does defensive copying of arrays, while the explicit *Array() factory methods do not.
      *
      * @param value Object to convert to Value
@@ -499,7 +504,7 @@ public final class Values {
 
     /**
      * Generic value factory method.
-     * <p>
+     * <p/>
      * Converts an array of object values to the internal Value type. See {@link Values#of}.
      */
     public static Value[] values(Object... objects) {
@@ -525,7 +530,7 @@ public final class Values {
 
     private static Value arrayValue(Object[] value) {
         //NOTE: blob[]
-        if(value instanceof Blob[]){
+        if (value instanceof Blob[]) {
             return blobArray(copy(value, new Blob[value.length]));
         }
 

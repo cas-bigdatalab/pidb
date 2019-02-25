@@ -148,10 +148,10 @@ trait Expressions extends Parser
           SemanticCompare(a, b.map(_.name), c))
         | group(operator(">:") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticBroader(a, b.map(_.name), c))
+          SemanticContain(a, b.map(_.name), c))
         | group(operator("<:") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticNarrower(a, b.map(_.name), c))
+          SemanticElementOf(a, b.map(_.name), c))
 
         ////NOTE: semantic operator
 
@@ -174,9 +174,39 @@ trait Expressions extends Parser
       ))
   }
 
+  //NOTE: <blobUrl>
+  private def BlobPath: Rule1[String] = rule("<url path>")(
+    push(new java.lang.StringBuilder) ~ oneOrMore(
+      !(RightArrowHead) ~ ANY
+        ~:% withContext(appendToStringBuilder(_)(_))
+    )
+      ~~> (_.toString())
+  )
+
+  private def BlobLiteral: Rule1[BlobLiteralExpr] = rule("<blob>")(
+    (
+      //TODO: http://xxx
+      LeftArrowHead ~ ignoreCase("FILE://") ~ BlobPath ~ RightArrowHead
+        ~~>> (x => BlobLiteralExpr(BlobFileURL(x)))
+        | LeftArrowHead ~ ignoreCase("BLOB://") ~ BlobPath ~ RightArrowHead
+        ~~>> (x => BlobLiteralExpr(BlobBase64URL(x.mkString(""))))
+        | LeftArrowHead ~ ignoreCase("HTTP://") ~ BlobPath ~ RightArrowHead
+        ~~>> (x => BlobLiteralExpr(BlobHttpURL(s"http://${x.mkString("")}")))
+        | LeftArrowHead ~ ignoreCase("HTTPS://") ~ BlobPath ~ RightArrowHead
+        ~~>> (x => BlobLiteralExpr(BlobHttpURL(s"https://${x.mkString("")}")))
+        | LeftArrowHead ~ ignoreCase("FTP://") ~ BlobPath ~ RightArrowHead
+        ~~>> (x => BlobLiteralExpr(BlobFtpURL(s"ftp://${x.mkString("")}")))
+        | LeftArrowHead ~ ignoreCase("SFTP://") ~ BlobPath ~ RightArrowHead
+        ~~>> (x => BlobLiteralExpr(BlobFtpURL(s"sftp://${x.mkString("")}")))
+      )
+  )
+
   private def Expression1: Rule1[ast.Expression] = rule("an expression")(
     NumberLiteral
       | StringLiteral
+      ////NOTE: <blobUrl>
+      | BlobLiteral
+      ////end of note
       | Parameter
       | keyword("TRUE") ~ push(ast.True()(_))
       | keyword("FALSE") ~ push(ast.False()(_))
@@ -247,4 +277,13 @@ trait Expressions extends Parser
   private def CaseAlternatives: Rule2[ast.Expression, ast.Expression] = rule("WHEN") {
     keyword("WHEN") ~~ Expression ~~ keyword("THEN") ~~ Expression
   }
+}
+
+case class TestExpr(x: Any)(val position: InputPosition) extends ast.Expression {
+
+  override def productElement(n: Int): Any = ???
+
+  override def productArity: Int = ???
+
+  override def canEqual(that: Any): Boolean = ???
 }

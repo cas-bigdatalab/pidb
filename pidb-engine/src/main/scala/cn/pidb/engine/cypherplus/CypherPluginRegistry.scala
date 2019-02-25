@@ -171,7 +171,7 @@ class UnknownPropertyException(name: String, x: Any)
 }
 
 class NoSuitableComparatorException(a: Any, b: Any)
-  extends RuntimeException(s"do not know how to compare: ${a.getClass.getSimpleName} and ${b.getClass.getSimpleName}") {
+  extends RuntimeException(s"no suiltable comparator: ${a.getClass.getSimpleName} and ${b.getClass.getSimpleName}") {
 
 }
 
