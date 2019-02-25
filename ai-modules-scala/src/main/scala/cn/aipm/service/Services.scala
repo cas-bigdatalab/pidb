@@ -1,13 +1,10 @@
 package cn.aipm.service
 
 import java.io.InputStream
-import java.util.Properties
-import java.io.BufferedInputStream
-import java.io.FileInputStream
-import scala.collection.mutable.HashMap
 
 import scala.collection.immutable.Map
 import scala.util.parsing.json.JSON
+
 
 
 class Services(private val _aipmHttpHostUrl:String) {
@@ -27,9 +24,9 @@ class Services(private val _aipmHttpHostUrl:String) {
     }
   }
 
-  def computeFaceSimilarity(img1InputStream:InputStream,img2InputStream:InputStream): Double={
+
+  def computeFaceSimilarity(img1InputStream:InputStream,img2InputStream:InputStream): List[List[Double]]={
     val serviceUrl = getServiceUrl("FaceSim")
-    print(serviceUrl)
 
     val contents = Map("image1" -> img1InputStream, "image2" -> img2InputStream)
 
@@ -37,10 +34,10 @@ class Services(private val _aipmHttpHostUrl:String) {
     val json:Option[Any] = JSON.parseFull(res)
     val map:Map[String,Any] = json.get.asInstanceOf[Map[String, Any]]
     if(map("res").asInstanceOf[Boolean]){
-      map("value").asInstanceOf[Double]
+      map("value").asInstanceOf[List[List[Double]]]
     }
     else{
-      -1
+      null
     }
 
   }

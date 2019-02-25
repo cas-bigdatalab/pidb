@@ -6,19 +6,18 @@ import org.junit.{Assert, Test}
 
 
 class ServicesTest {
-  val hostUrl = "http://10.0.86.128:8081/"
+  val hostUrl = "http://10.0.86.128:8082/"
 
   @Test
   def test1(): Unit = {
-    var image_path1 = "E:/[face]/unknown/test.jpg"
-    var image_path2 = "E:/[face]/unknown/test2.jpg"
+    var image_path1 = "E:/[face]/zdy1.jpg"
+    var image_path2 = "E:/[face]/gy2.jpg"
     val file1 = new File(image_path1)
     val file2 = new File(image_path2)
     val in1 = new FileInputStream(file1)
     val in2 = new FileInputStream(file2)
-//    Services.hostUrl="http://127.0.0.1:8081/service/"
     val sim = Services.initialize(hostUrl).computeFaceSimilarity(in1, in2)
-    print(sim)
+    print(sim(0)(0))
   }
 
 

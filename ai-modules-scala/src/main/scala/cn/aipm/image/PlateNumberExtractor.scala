@@ -2,7 +2,8 @@ package cn.aipm.image
 
 import cn.pidb.blob.{Blob, PropertyExtractor}
 import cn.aipm.service.Services
-import cn.pidb.util.{Config, ConfigEx}
+import cn.pidb.util.Config
+import cn.pidb.util.ConfigEx._
 
 
 class PlateNumberExtractor extends PropertyExtractor {
@@ -16,6 +17,6 @@ class PlateNumberExtractor extends PropertyExtractor {
   })
 
   override def initialize(conf: Config): Unit = {
-    aipmHttpHostUrl = ConfigEx.config2Ex(conf).getRequiredValueAsString("aipm.http.host.url")
+    aipmHttpHostUrl = conf.getRequiredValueAsString("aipm.http.host.url")
   }
 }

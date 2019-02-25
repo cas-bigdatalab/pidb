@@ -26,5 +26,14 @@ class FaceInPhotoComparatorTest extends TestBase {
 
   }
 
+  @Test
+  def test3():Unit={
+    var imagePath1 = "E:/[face]/test2-1.jpg"
+    var imagePath2 = "E:/[face]/test2-2.jpg"
+    val res = comparator.contains(Blob.fromFile(new File(imagePath1)),Blob.fromFile(new File(imagePath2)))
+    print(res)
+
+  }
+
 
 }
