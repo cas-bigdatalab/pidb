@@ -1,4 +1,4 @@
-package cn.pidb.engine.refactor.buffer.exception
+package cn.pidb.engine.buffer.exception
 
 class BufferException (private val message: String = "",
                             private val cause: Throwable = None.orNull

@@ -2,10 +2,9 @@ package cn.pidb.engine.util
 
 import java.io.{File, FileInputStream, InputStream}
 
-import cn.pidb.blob.{Blob, BlobId, InputStreamSource, MimeType}
-import cn.pidb.engine.BlobIdFactory
+import cn.pidb.blob._
 import cn.pidb.util.StreamUtils._
-import org.apache.hadoop.hbase.client.{Get, Delete, Put}
+import org.apache.hadoop.hbase.client.{Delete, Get, Put}
 import org.apache.hadoop.hbase.util.Bytes
 
 object HBaseUtils {
@@ -21,9 +20,9 @@ object HBaseUtils {
     retPut.addColumn(columnFamily, qualifyFamilyLen, Bytes.toBytes(blob.length)) //length
   }
 
-  def buildPut(blobFile: File) : Put = {
+  def buildPut(blobFile: File, blobIdFac : BlobIdFactory) : Put = {
     val fis = new FileInputStream(blobFile)
-    val blobId = BlobId.fromLongArray(fis.readLong(), fis.readLong())
+    val blobId = blobIdFac.readFromStream(fis)
     val mimeType = MimeType.fromCode(fis.readLong())
     val length = fis.readLong()
     fis.close()
@@ -48,6 +47,7 @@ object HBaseUtils {
     delete.addColumns(columnFamily, qualifyFamilyMT)
     delete.addColumns(columnFamily, qualifyFamilyLen)
   }
+
   def buildGetBlob(blobId: BlobId) : Get = {
     new Get(blobId.asByteArray())
   }
