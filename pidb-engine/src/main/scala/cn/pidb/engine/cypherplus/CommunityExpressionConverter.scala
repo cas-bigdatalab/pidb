@@ -55,11 +55,11 @@ object CommunityExpressionConverter extends ExpressionConverter {
       case e: ast.RegexMatch => regexMatch(e, self)
 
       ////NOTE: cypher plus
-      case e: SemanticLike => SemanticLikeExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
-      case e: SemanticCompare => SemanticCompareExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
-      case e: SemanticUnlike => SemanticUnlikeExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
-      case e: SemanticElementOf => SemanticElementOfExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
-      case e: SemanticContain => SemanticContainExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
+      case e: SemanticLike => SemanticLikeExpression(self.toCommandExpression(e.lhs), e.ant, self.toCommandExpression(e.rhs))
+      case e: SemanticCompare => SemanticCompareExpression(self.toCommandExpression(e.lhs), e.ant, self.toCommandExpression(e.rhs))
+      case e: SemanticUnlike => SemanticUnlikeExpression(self.toCommandExpression(e.lhs), e.ant, self.toCommandExpression(e.rhs))
+      case e: SemanticElementOf => SemanticElementOfExpression(self.toCommandExpression(e.lhs), e.ant, self.toCommandExpression(e.rhs))
+      case e: SemanticContain => SemanticContainExpression(self.toCommandExpression(e.lhs), e.ant, self.toCommandExpression(e.rhs))
       case e: CustomProperty => CustomPropertyExpression(self.toCommandExpression(e.map), PropertyKey(e.propertyKey.name))
       ////NOTE: end
 
