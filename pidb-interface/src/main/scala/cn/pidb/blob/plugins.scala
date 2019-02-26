@@ -23,7 +23,7 @@ trait SetComparator {
   /**
     * @return 0~1
     */
-  def contains(a: Any, b: Any): Array[Array[Double]];
+  def compare(a: Any, b: Any): Array[Array[Double]];
 
   def initialize(conf: Config);
 }

@@ -9,15 +9,15 @@ import scala.beans.BeanProperty
   * Created by bluejoe on 2019/1/31.
   */
 trait CustomPropertyProvider {
-  def getCustomProperty(x: Any, propertyName: String): Any;
+  def getCustomProperty(x: Any, propertyName: String): Option[Any];
 }
 
 trait ValueMatcher {
-  def like(a: Any, b: Any, algoName: Option[String]): Boolean;
+  def like(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean];
 
-  def contains(a: Any, b: Any, algoName: Option[String]): Boolean;
+  def contains(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean];
 
-  def compare(a: Any, b: Any, algoName: Option[String]): Double;
+  def compare(a: Any, b: Any, algoName: Option[String]): Option[Double];
 }
 
 object ValueType {
@@ -39,6 +39,7 @@ class DomainExtractorEntry {
 
 class DomainComparatorEntry {
   @BeanProperty var domain: String = "";
+  //default threshold
   @BeanProperty var threshold: Double = 0.7;
   @BeanProperty var valueComparators: Array[NamedValueComparatorEntry] = Array();
   @BeanProperty var setComparators: Array[NamedSetComparatorEntry] = Array();
@@ -69,25 +70,32 @@ class CypherPluginRegistry {
       .map(x => x._1 -> x._2.map(_._2))
 
     //TODO: cache extraction
-    def getCustomProperty(x: Any, name: String): Any = {
-      val m1 = map.get(name -> ValueType.typeNameOf(x));
-      m1.map(_.head.extract(x).apply(name))
-        .getOrElse {
-          val m2 =
-            if (x.isInstanceOf[Blob])
-              map.get(name -> ValueType.ANY_BLOB)
-            else
-              None;
+    def getCustomProperty(x: Any, name: String): Option[Any] = {
+      //image:png
+      val m1 = map.get(name -> ValueType.typeNameOf(x)).map(_.head.extract(x).apply(name));
 
-          m2.map(_.head.extract(x).apply(name))
-            .getOrElse {
-              map.get(name -> ValueType.ANY)
-                .map(_.head.extract(x).apply(name))
-                .getOrElse {
-                  throw new UnknownPropertyException(name, x);
-                }
-            }
+      if (m1.isDefined) {
+        m1
+      }
+      else {
+        //blob:*
+        val m3 =
+          if (x.isInstanceOf[Blob]) {
+            map.get(name -> ValueType.ANY_BLOB).map(_.head.extract(x).apply(name))
+          }
+          else {
+            None
+          }
+
+        if (m3.isDefined) {
+          m3
         }
+        else {
+          //*
+          map.get(name -> ValueType.ANY)
+            .map(_.head.extract(x).apply(name))
+        }
+      }
     }
   }
 
@@ -106,10 +114,10 @@ class CypherPluginRegistry {
 
     comparators.flatMap(_.setComparators).map(_.comparator).foreach(_.initialize(conf));
 
-    def like(a: Any, b: Any, algoName: Option[String]): Boolean = {
+    def like(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean] = {
       _match(a, b, algoName) match {
-        case (x, null, null) => x != 0.0
-        case (d, _, entry) => d > entry.threshold
+        case (x, null, null) => Some(x != 0.0)
+        case (d, _, entry) => Some(d > threshold.getOrElse(entry.threshold))
       }
     }
 
@@ -136,15 +144,15 @@ class CypherPluginRegistry {
       }
     }
 
-    override def compare(a: Any, b: Any, algoName: Option[String]): Double = {
-      _match(a, b, algoName)._1
+    override def compare(a: Any, b: Any, algoName: Option[String]): Option[Double] = {
+      Some(_match(a, b, algoName)._1)
     }
 
-    override def contains(a: Any, b: Any, algoName: Option[String]): Boolean = {
+    override def contains(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean] = {
       (a, b) match {
-        case (null, null) => true
-        case (null, _) => false
-        case (_, null) => true
+        case (null, null) => Some(true)
+        case (null, _) => Some(false)
+        case (_, null) => Some(true)
         case _ =>
           val (a2, b2, (map, entry)) = groupedSetComparators.get(ValueType.typeNameOf(a, b))
             .map {
@@ -159,7 +167,12 @@ class CypherPluginRegistry {
             .getOrElse(map.headOption.map(_._2)
               .getOrElse(throw new NoSuitableComparatorException(a, b)))
 
-          comparator.contains(a2, b2)
+          val comp = comparator.compare(a2, b2)
+          if (comp.length > 1) {
+            throw new TooManyObjectsException(a2);
+          }
+
+          Some(comp(0).exists(_ > threshold.getOrElse(entry.threshold)))
       }
     }
   }
@@ -177,5 +190,10 @@ class NoSuitableComparatorException(a: Any, b: Any)
 
 class UnknownAlgorithmException(name: String)
   extends RuntimeException(s"unknown algorithm: $name") {
+
+}
+
+class TooManyObjectsException(o: Any)
+  extends RuntimeException(s"too many objects: $o") {
 
 }

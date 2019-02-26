@@ -131,27 +131,34 @@ trait Expressions extends Parser
       | group(operator("-") ~~ Expression4) ~~>> (ast.UnarySubtract(_))
   )
 
+  private def AlgoNameWithThreshold: Rule1[AlgoNameWithThresholdExpr] = rule("an algorithm with threshold") {
+    group(SymbolicNameString ~ optional(operator("/") ~ DoubleLiteral)) ~~>>
+      ((a, b) => AlgoNameWithThresholdExpr(Some(a), b.map(_.value))) |
+      group(DoubleLiteral ~ optional(operator("/") ~ SymbolicNameString)) ~~>>
+        ((a, b) => AlgoNameWithThresholdExpr(b, Some(a.value)))
+  }
+
   private def Expression3: Rule1[ast.Expression] = rule("an expression") {
     Expression2 ~ zeroOrMore(WS ~ (
       group(operator("=~") ~~ Expression2) ~~>> (RegexMatch(_: ast.Expression, _))
 
         ////NOTE: semantic operator
 
-        | group(operator("~:") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
+        | group(operator("~:") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticLike(a, b.map(_.name), c))
-        | group(operator("!:") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
+          SemanticLike(a, b, c))
+        | group(operator("!:") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticUnlike(a, b.map(_.name), c))
-        | group(operator("::") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
+          SemanticUnlike(a, b, c))
+        | group(operator("::") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticCompare(a, b.map(_.name), c))
-        | group(operator(">:") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
+          SemanticCompare(a, b, c))
+        | group(operator(">:") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticContain(a, b.map(_.name), c))
-        | group(operator("<:") ~ optional(PropertyKeyName) ~~ Expression2) ~~>>
+          SemanticContain(a, b, c))
+        | group(operator("<:") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticElementOf(a, b.map(_.name), c))
+          SemanticElementOf(a, b, c))
 
         ////NOTE: semantic operator
 
@@ -174,8 +181,8 @@ trait Expressions extends Parser
       ))
   }
 
-  //NOTE: <blobUrl>
-  private def BlobPath: Rule1[String] = rule("<url path>")(
+  //NOTE: <blobUrlPath>
+  private def BlobURLPath: Rule1[String] = rule("<blob url path>")(
     push(new java.lang.StringBuilder) ~ oneOrMore(
       !(RightArrowHead) ~ ANY
         ~:% withContext(appendToStringBuilder(_)(_))
@@ -186,17 +193,17 @@ trait Expressions extends Parser
   private def BlobLiteral: Rule1[BlobLiteralExpr] = rule("<blob>")(
     (
       //TODO: http://xxx
-      LeftArrowHead ~ ignoreCase("FILE://") ~ BlobPath ~ RightArrowHead
+      LeftArrowHead ~ ignoreCase("FILE://") ~ BlobURLPath ~ RightArrowHead
         ~~>> (x => BlobLiteralExpr(BlobFileURL(x)))
-        | LeftArrowHead ~ ignoreCase("BLOB://") ~ BlobPath ~ RightArrowHead
+        | LeftArrowHead ~ ignoreCase("BLOB://") ~ BlobURLPath ~ RightArrowHead
         ~~>> (x => BlobLiteralExpr(BlobBase64URL(x.mkString(""))))
-        | LeftArrowHead ~ ignoreCase("HTTP://") ~ BlobPath ~ RightArrowHead
+        | LeftArrowHead ~ ignoreCase("HTTP://") ~ BlobURLPath ~ RightArrowHead
         ~~>> (x => BlobLiteralExpr(BlobHttpURL(s"http://${x.mkString("")}")))
-        | LeftArrowHead ~ ignoreCase("HTTPS://") ~ BlobPath ~ RightArrowHead
+        | LeftArrowHead ~ ignoreCase("HTTPS://") ~ BlobURLPath ~ RightArrowHead
         ~~>> (x => BlobLiteralExpr(BlobHttpURL(s"https://${x.mkString("")}")))
-        | LeftArrowHead ~ ignoreCase("FTP://") ~ BlobPath ~ RightArrowHead
+        | LeftArrowHead ~ ignoreCase("FTP://") ~ BlobURLPath ~ RightArrowHead
         ~~>> (x => BlobLiteralExpr(BlobFtpURL(s"ftp://${x.mkString("")}")))
-        | LeftArrowHead ~ ignoreCase("SFTP://") ~ BlobPath ~ RightArrowHead
+        | LeftArrowHead ~ ignoreCase("SFTP://") ~ BlobURLPath ~ RightArrowHead
         ~~>> (x => BlobLiteralExpr(BlobFtpURL(s"sftp://${x.mkString("")}")))
       )
   )
@@ -277,13 +284,4 @@ trait Expressions extends Parser
   private def CaseAlternatives: Rule2[ast.Expression, ast.Expression] = rule("WHEN") {
     keyword("WHEN") ~~ Expression ~~ keyword("THEN") ~~ Expression
   }
-}
-
-case class TestExpr(x: Any)(val position: InputPosition) extends ast.Expression {
-
-  override def productElement(n: Int): Any = ???
-
-  override def productArity: Int = ???
-
-  override def canEqual(that: Any): Boolean = ???
 }

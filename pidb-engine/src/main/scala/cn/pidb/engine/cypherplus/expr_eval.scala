@@ -65,130 +65,126 @@ case class CustomPropertyExpression(mapExpr: Expression, propertyKey: KeyToken)
   override def toString = s"$mapExpr.${propertyKey.name}"
 }
 
-case class SemanticLikeExpression(lhsExpr: Expression, algorithm: Option[String], rightExpr: Expression)
-                                 (implicit converter: TextValue => TextValue = identity) extends Predicate {
-  def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
+trait SemanticOperatorSupport {
+  val lhsExpr: Expression;
+  val ant: Option[AlgoNameWithThresholdExpr];
+  val rhsExpr: Expression;
+
+  val (algorithm, threshold) = ant match {
+    case None => (None, None)
+    case Some(AlgoNameWithThresholdExpr(a, b)) => (a, b)
+  }
+
+  def getOperatorString: String
+
+  def rewriteMethod: (Expression, Option[AlgoNameWithThresholdExpr], Expression) => Expression
+
+  def execute[T](m: ExecutionContext, state: QueryState)(f: (AnyValue, AnyValue, BlobPropertyStoreService) => T): T = {
     val lValue = lhsExpr(m, state)
-    val rValue = rightExpr(m, state)
-    (lValue, rValue) match {
-      case (Values.NO_VALUE, Values.NO_VALUE) => Some(true)
-      case (_, Values.NO_VALUE) => Some(false)
-      case (Values.NO_VALUE, _) => Some(false)
-      case (a: Value, b: Value) => Some(
-        {
-          if (state.query.isInstanceOf[UpdateCountingQueryContext])
-            state._get("query.inner.inner.transactionalContext.tc.graph.graph.config")
-          else
-            state._get("query.inner.transactionalContext.tc.graph.graph.config")
-        }
-          .asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]()
-          .getValueMatcher.like(a.asObject(), b.asObject(), algorithm))
+    val rValue = rhsExpr(m, state)
+    f(lValue, rValue, {
+      if (state.query.isInstanceOf[UpdateCountingQueryContext])
+        state._get("query.inner.inner.transactionalContext.tc.graph.graph.config")
+      else
+        state._get("query.inner.transactionalContext.tc.graph.graph.config")
+    }.asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]());
+  }
+
+  override def toString: String = lhsExpr.toString() + this.getOperatorString + rhsExpr.toString()
+
+  def containsIsNull = false
+
+  def rewrite(f: (Expression) => Expression) = f(rhsExpr.rewrite(f) match {
+    case other => rewriteMethod(lhsExpr.rewrite(f), ant, other)
+  })
+
+  def arguments = Seq(lhsExpr, rhsExpr)
+
+  def symbolTableDependencies = lhsExpr.symbolTableDependencies ++ rhsExpr.symbolTableDependencies
+}
+
+case class SemanticLikeExpression(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                                 (implicit converter: TextValue => TextValue = identity)
+  extends Predicate with SemanticOperatorSupport {
+  override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
+    execute(m, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
+      (lValue, rValue) match {
+        case (Values.NO_VALUE, Values.NO_VALUE) => Some(true)
+        case (_, Values.NO_VALUE) => Some(false)
+        case (Values.NO_VALUE, _) => Some(false)
+        case (a: Value, b: Value) => bpss.getValueMatcher.like(a.asObject(), b.asObject(), algorithm, threshold)
+      }
     }
   }
 
-  override def toString: String = lhsExpr.toString() + " ~= /" + rightExpr.toString() + "/"
+  override def getOperatorString: String = "~:"
 
-  def containsIsNull = false
-
-  def rewrite(f: (Expression) => Expression) = f(rightExpr.rewrite(f) match {
-    case other => SemanticLikeExpression(lhsExpr.rewrite(f), algorithm, other)(converter)
-  })
-
-  def arguments = Seq(lhsExpr, rightExpr)
-
-  def symbolTableDependencies = lhsExpr.symbolTableDependencies ++ rightExpr.symbolTableDependencies
+  override def rewriteMethod = SemanticLikeExpression(_, _, _)(converter)
 }
 
-case class SemanticElementOfExpression(lhsExpr: Expression, algorithm: Option[String], rightExpr: Expression)
-                                      (implicit converter: TextValue => TextValue = identity) extends Predicate {
-  def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
-    new SemanticContainExpression(rightExpr, algorithm, lhsExpr)(converter).isMatch(m, state)
+
+case class SemanticUnlikeExpression(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                                   (implicit converter: TextValue => TextValue = identity)
+  extends Predicate with SemanticOperatorSupport {
+
+  override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
+    new SemanticLikeExpression(lhsExpr, ant, rhsExpr)(converter).isMatch(m, state).map(!_);
   }
 
-  override def toString: String = lhsExpr.toString() + " ~= /" + rightExpr.toString() + "/"
+  override def getOperatorString: String = "!:"
 
-  def containsIsNull = false
-
-  def rewrite(f: (Expression) => Expression) = f(rightExpr.rewrite(f) match {
-    case other => SemanticElementOfExpression(lhsExpr.rewrite(f), algorithm, other)(converter)
-  })
-
-  def arguments = Seq(lhsExpr, rightExpr)
-
-  def symbolTableDependencies = lhsExpr.symbolTableDependencies ++ rightExpr.symbolTableDependencies
+  override def rewriteMethod = SemanticUnlikeExpression(_, _, _)(converter)
 }
 
-case class SemanticContainExpression(lhsExpr: Expression, algorithm: Option[String], rightExpr: Expression)
-                                    (implicit converter: TextValue => TextValue = identity) extends Predicate {
-  def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
-    val lValue = lhsExpr(m, state)
-    val rValue = rightExpr(m, state)
-    (lValue, rValue) match {
-      case (Values.NO_VALUE, Values.NO_VALUE) => Some(true)
-      case (_, Values.NO_VALUE) => Some(false)
-      case (Values.NO_VALUE, _) => Some(false)
-      case (a: Value, b: Value) => Some(state._get("query.inner.transactionalContext.tc.graph.graph.config").
-        asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]()
-        .getValueMatcher.contains(a.asObject(), b.asObject(), algorithm))
+case class SemanticContainExpression(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                                    (implicit converter: TextValue => TextValue = identity)
+  extends Predicate with SemanticOperatorSupport {
+
+  override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
+    execute(m, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
+      (lValue, rValue) match {
+        case (Values.NO_VALUE, Values.NO_VALUE) => Some(true)
+        case (_, Values.NO_VALUE) => Some(false)
+        case (Values.NO_VALUE, _) => Some(false)
+        case (a: Value, b: Value) => bpss.getValueMatcher.contains(a.asObject(), b.asObject(), algorithm, threshold)
+      }
     }
   }
 
-  override def toString: String = lhsExpr.toString() + " ~= /" + rightExpr.toString() + "/"
+  override def getOperatorString: String = ">:"
 
-  def containsIsNull = false
-
-  def rewrite(f: (Expression) => Expression) = f(rightExpr.rewrite(f) match {
-    case other => SemanticContainExpression(lhsExpr.rewrite(f), algorithm, other)(converter)
-  })
-
-  def arguments = Seq(lhsExpr, rightExpr)
-
-  def symbolTableDependencies = lhsExpr.symbolTableDependencies ++ rightExpr.symbolTableDependencies
+  override def rewriteMethod = SemanticContainExpression(_, _, _)(converter)
 }
 
-case class SemanticUnlikeExpression(lhsExpr: Expression, algorithm: Option[String], rightExpr: Expression)
-                                   (implicit converter: TextValue => TextValue = identity) extends Predicate {
-  def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
-    new SemanticLikeExpression(lhsExpr, algorithm, rightExpr)(converter).isMatch(m, state).map(!_);
+case class SemanticElementOfExpression(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                                      (implicit converter: TextValue => TextValue = identity)
+  extends Predicate with SemanticOperatorSupport {
+  override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
+    new SemanticContainExpression(rhsExpr, ant, lhsExpr)(converter).isMatch(m, state)
   }
 
-  override def toString: String = lhsExpr.toString() + " ~= /" + rightExpr.toString() + "/"
+  override def getOperatorString: String = "<:"
 
-  def containsIsNull = false
-
-  def rewrite(f: (Expression) => Expression) = f(rightExpr.rewrite(f) match {
-    case other => SemanticUnlikeExpression(lhsExpr.rewrite(f), algorithm, other)(converter)
-  })
-
-  def arguments = Seq(lhsExpr, rightExpr)
-
-  def symbolTableDependencies = lhsExpr.symbolTableDependencies ++ rightExpr.symbolTableDependencies
+  override def rewriteMethod = SemanticElementOfExpression(_, _, _)(converter)
 }
 
-case class SemanticCompareExpression(lhsExpr: Expression, algorithm: Option[String], rightExpr: Expression)
-                                    (implicit converter: TextValue => TextValue = identity) extends Expression {
+case class SemanticCompareExpression(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                                    (implicit converter: TextValue => TextValue = identity)
+  extends Expression with SemanticOperatorSupport {
+
   override def apply(ctx: ExecutionContext, state: QueryState): AnyValue = {
-    val aVal = lhsExpr(ctx, state)
-    val bVal = rightExpr(ctx, state)
-
-    (aVal, bVal) match {
-      case (x, y) if x == Values.NO_VALUE || y == Values.NO_VALUE => Values.NO_VALUE
-      case (a: Value, b: Value) => Values.doubleValue(state._get("query.inner.transactionalContext.tc.graph.graph.config").asInstanceOf[RuntimeContextHolder]
-        .getRuntimeContext[BlobPropertyStoreService].getValueMatcher.compare(a.asObject, b.asObject(), algorithm))
+    execute(ctx, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
+      (lValue, rValue) match {
+        case (x, y) if x == Values.NO_VALUE || y == Values.NO_VALUE => Values.NO_VALUE
+        case (a: Value, b: Value) => bpss.getValueMatcher.compare(a.asObject, b.asObject(), algorithm).
+          map(Values.doubleValue(_)).getOrElse(Values.NO_VALUE)
+      }
     }
   }
 
-  override def toString: String = lhsExpr.toString() + " %% /" + rightExpr.toString() + "/"
+  override def getOperatorString: String = "::"
 
-  def containsIsNull = false
-
-  def rewrite(f: (Expression) => Expression) = f(rightExpr.rewrite(f) match {
-    case other => SemanticCompareExpression(lhsExpr.rewrite(f), algorithm, other)(converter)
-  })
-
-  def arguments = Seq(lhsExpr, rightExpr)
-
-  def symbolTableDependencies = lhsExpr.symbolTableDependencies ++ rightExpr.symbolTableDependencies
+  override def rewriteMethod = SemanticCompareExpression(_, _, _)(converter)
 }
 
 class InvalidSemanticOperatorException(compared: AnyValue) extends RuntimeException {
