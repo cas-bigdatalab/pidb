@@ -14,7 +14,7 @@ class FaceSimilarityComparatorTest extends TestBase {
   def test1():Unit={
     var imagePath1 = "E:/[face]/unknown/test.jpg"
     var imagePath2 = "E:/[face]/unknown/test2.jpg"
-    val res = simComparator.contains(Blob.fromFile(new File(imagePath1)),Blob.fromFile(new File(imagePath2)))
+    val res = simComparator.compare(Blob.fromFile(new File(imagePath1)),Blob.fromFile(new File(imagePath2)))
     print(res)
   }
 

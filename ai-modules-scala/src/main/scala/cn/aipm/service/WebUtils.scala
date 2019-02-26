@@ -4,58 +4,38 @@ import java.io.{File, InputStream}
 
 import org.apache.http.client.methods.{HttpGet, HttpPost}
 import org.apache.http.entity.mime.{HttpMultipartMode, MultipartEntityBuilder}
-import org.apache.http.entity.{ContentType, StringEntity}
+import org.apache.http.entity.ContentType
 import org.apache.http.impl.client.HttpClients
 import org.apache.http.util.EntityUtils
 import org.apache.http.{HttpEntity, HttpStatus}
+import org.apache.http.conn.HttpHostConnectException
 
 import scala.collection.immutable.Map
 import scala.collection.mutable.ListBuffer
-import scala.util.parsing.json.JSONObject
 
 object WebUtils {
 
   def doGet(reqUrl:String, contents:Map[String,Any]): String ={
     var resStr = ""
+    try{
+      val client = HttpClients.createDefault()
+      val httpGet: HttpGet = new HttpGet(reqUrl)
 
-    val client = HttpClients.createDefault()
-    val httpGet: HttpGet = new HttpGet(reqUrl)
-    //设置提交参数为application/json
-    //    post.addHeader("Content-Type", "multipart/form-data")
-
-
-    //执行请求
-    val response = client.execute(httpGet)
-    //返回结果
-    //    val allHeaders: Array[Header] = post.getAllHeaders
-    val statusCode = response.getStatusLine.getStatusCode
-    if (statusCode == HttpStatus.SC_OK) {
-      val resEntity:HttpEntity = response.getEntity
-      resStr = EntityUtils.toString(resEntity,"UTF-8")
+      //执行请求
+      val response = client.execute(httpGet)
+      //返回结果
+      //    val allHeaders: Array[Header] = post.getAllHeaders
+      val statusCode = response.getStatusLine.getStatusCode
+      if (statusCode == HttpStatus.SC_OK) {
+        val resEntity:HttpEntity = response.getEntity
+        resStr = EntityUtils.toString(resEntity,"UTF-8")
+      }
+    }catch {
+      case e:HttpHostConnectException =>
+        throw new AipmServiceException(s"Failed connect to ${e.getHost} ")
+      case e => throw new AipmServiceException(e.getMessage)
     }
-    resStr
-  }
 
-
-  def doJsonPost(reqUrl:String, contents:Map[String,String]): String ={
-    var resStr = ""
-    val jsonObj :JSONObject = new JSONObject(contents)
-    val client = HttpClients.createDefault()
-    val post: HttpPost = new HttpPost(reqUrl)
-    //设置提交参数为application/json
-    //    post.addHeader("Content-Type", "multipart/form-data")
-    post.addHeader("Content-Type", "application/json")
-    post.setEntity(new StringEntity(jsonObj.toString))
-    //执行请求
-    val response = client.execute(post)
-    //返回结果
-    //    val allHeaders: Array[Header] = post.getAllHeaders
-    val statusCode = response.getStatusLine.getStatusCode
-    if (statusCode == HttpStatus.SC_OK) {
-      val resEntity:HttpEntity = response.getEntity
-      resStr = EntityUtils.toString(resEntity,"UTF-8")
-    }
-    response.close()
     resStr
   }
 
@@ -91,8 +71,9 @@ object WebUtils {
       }
       response.close()
     } catch {
-      case e: Exception =>
-        e.printStackTrace()
+      case e:HttpHostConnectException =>
+        throw new AipmServiceException(s"Failed connect to ${e.getHost} ")
+      case e => throw new AipmServiceException(e.getMessage)
     }
     resStr
   }
