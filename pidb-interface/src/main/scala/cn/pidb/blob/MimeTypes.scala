@@ -26,7 +26,7 @@ object MimeType {
 
   def fromText(text: String): MimeType = {
     val lc = text.toLowerCase();
-    new MimeType(type2Codes.get(lc).getOrElse(throw new UnknownMimieTypeException(lc)), lc);
+    new MimeType(type2Codes.get(lc).getOrElse(throw new UnknownMimeTypeException(lc)), lc);
   }
 
   def fromCode(code: Long) = new MimeType(code, code2Types(code));
@@ -40,6 +40,6 @@ object MimeType {
   }
 }
 
-class UnknownMimieTypeException(mtype: String) extends RuntimeException(s"unknown mime-type: $mtype") {
+class UnknownMimeTypeException(mtype: String) extends RuntimeException(s"unknown mime-type: $mtype") {
 
 }

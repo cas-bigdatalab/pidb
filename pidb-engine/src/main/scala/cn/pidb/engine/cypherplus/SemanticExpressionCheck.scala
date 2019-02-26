@@ -126,11 +126,11 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:SemanticBroader =>
+      case x:SemanticContain =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:SemanticNarrower =>
+      case x:SemanticElementOf =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
@@ -439,6 +439,9 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
 
       case x:StringLiteral =>
         specifyType(CTString, x)
+
+      case x:BlobLiteralExpr =>
+        specifyType(CTBlob, x)
 
       case x:Null =>
         specifyType(CTAny.covariant, x)

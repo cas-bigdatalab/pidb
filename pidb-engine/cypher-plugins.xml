@@ -43,7 +43,7 @@
             <list>
                 <bean class="cn.pidb.engine.cypherplus.DomainComparatorEntry">
                     <property name="domain" value="blob/image:blob/image"/>
-                    <property name="threshold" value="0.7"/>
+                    <property name="threshold" value="0.6"/>
                     <property name="valueComparators">
                         <list>
                             <bean class="cn.pidb.engine.cypherplus.NamedValueComparatorEntry">

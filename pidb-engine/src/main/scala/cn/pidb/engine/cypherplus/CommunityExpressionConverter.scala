@@ -42,6 +42,7 @@ object CommunityExpressionConverter extends ExpressionConverter {
       case e: ast.True => predicates.True()
       case e: ast.False => predicates.Not(predicates.True())
       case e: ast.Literal => commandexpressions.Literal(e.value)
+      case e: BlobLiteralExpr => BlobLiteralExpression(e.value)
       case e: ast.Variable => variable(e)
       case e: ast.Or => predicates.Or(self.toCommandPredicate(e.lhs), self.toCommandPredicate(e.rhs))
       case e: ast.Xor => predicates.Xor(self.toCommandPredicate(e.lhs), self.toCommandPredicate(e.rhs))
@@ -57,8 +58,8 @@ object CommunityExpressionConverter extends ExpressionConverter {
       case e: SemanticLike => SemanticLikeExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
       case e: SemanticCompare => SemanticCompareExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
       case e: SemanticUnlike => SemanticUnlikeExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
-      case e: SemanticNarrower => SemanticNarrowerExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
-      case e: SemanticBroader => SemanticBroaderExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
+      case e: SemanticElementOf => SemanticElementOfExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
+      case e: SemanticContain => SemanticContainExpression(self.toCommandExpression(e.lhs), e.algorithm, self.toCommandExpression(e.rhs))
       case e: CustomProperty => CustomPropertyExpression(self.toCommandExpression(e.map), PropertyKey(e.propertyKey.name))
       ////NOTE: end
 

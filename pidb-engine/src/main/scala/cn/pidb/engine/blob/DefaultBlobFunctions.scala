@@ -30,19 +30,7 @@ class DefaultBlobFunctions {
   @UserFunction("Blob.fromURL")
   @Description("load blob from an url")
   def fromURL(@Name("url") url: String): Blob = {
-    val client = HttpClientBuilder.create().build();
-    val get = new HttpGet(url);
-    val resp = client.execute(get);
-    val en = resp.getEntity;
-    val blob = Blob.fromInputStreamSource(new InputStreamSource() {
-      override def offerStream[T](consume: (InputStream) => T): T = {
-        val t = consume(en.getContent)
-        client.close()
-        t
-      }
-    }, en.getContentLength, Some(MimeType.fromText(en.getContentType.getValue)));
-
-    blob
+    Blob.fromURL(url);
   }
 
   @UserFunction("Blob.fromUTF8String")
