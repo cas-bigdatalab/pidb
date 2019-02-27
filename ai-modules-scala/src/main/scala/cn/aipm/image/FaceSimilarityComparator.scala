@@ -15,8 +15,10 @@ class FaceSimilarityComparator extends SetComparator {
         val temp = Services.initialize(aipmHttpHostUrl).computeFaceSimilarity(is1,is2)
         if (temp != null){
           val arr:Array[Array[Double]] = new Array[Array[Double]](temp.size)
+          var i:Int = 0
           for(t<-temp){
-            arr(0) = t.toArray
+            arr(i) = t.toArray
+            i += 1
           }
           arr
         }
