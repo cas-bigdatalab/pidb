@@ -15,9 +15,19 @@ trait CustomPropertyProvider {
 trait ValueMatcher {
   def like(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean];
 
-  def contains(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean];
+  def containsOne(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean];
 
-  def compare(a: Any, b: Any, algoName: Option[String]): Option[Double];
+  def containsSet(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean];
+
+  /**
+    * compares two values
+    */
+  def compareOne(a: Any, b: Any, algoName: Option[String]): Option[Double];
+
+  /**
+    * compares two objects as sets
+    */
+  def compareSet(a: Any, b: Any, algoName: Option[String]): Option[Array[Array[Double]]];
 }
 
 object ValueType {
@@ -100,80 +110,144 @@ class CypherPluginRegistry {
   }
 
   def createValueComparatorRegistry(conf: Config) = new ValueMatcher with Logging {
-    //all value comparators
-    val valueGroupedComparators = comparators.map { x =>
-      (x.getDomain, (x.valueComparators.map(x => x.name -> x.comparator).toMap -> x))
-    }.toMap
-
+    //initialize all comparators
     comparators.flatMap(_.valueComparators).map(_.comparator).foreach(_.initialize(conf));
-
-    //all set comparators
-    val groupedSetComparators = comparators.map { x =>
-      (x.getDomain, (x.setComparators.map(x => x.name -> x.comparator).toMap -> x))
-    }.toMap
-
     comparators.flatMap(_.setComparators).map(_.comparator).foreach(_.initialize(conf));
 
     def like(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean] = {
-      _match(a, b, algoName) match {
-        case (x, null, null) => Some(x != 0.0)
-        case (d, _, entry) => Some(d > threshold.getOrElse(entry.threshold))
-      }
-    }
-
-    private def _match(a: Any, b: Any, algoName: Option[String]): (Double, ValueComparator, DomainComparatorEntry) = {
       (a, b) match {
-        case (null, null) => (1.0, null, null)
-        case (null, _) => (0.0, null, null)
-        case (_, null) => (0.0, null, null)
+        case (null, null) => Some(true)
+        case (null, _) => Some(false)
+        case (_, null) => Some(false)
         case _ =>
-          val (a2, b2, (map, entry)) = valueGroupedComparators.get(ValueType.typeNameOf(a, b))
-            .map {
-              (a, b, _)
-            }.getOrElse {
-            (b, a, valueGroupedComparators.get(ValueType.typeNameOf(b, a)).getOrElse(throw new NoSuitableComparatorException(a, b)))
-          }
-
-          val comparator = algoName.map(
-            map.get(_)
-              .getOrElse(throw new UnknownAlgorithmException(algoName.get)))
-            .getOrElse(map.headOption.map(_._2)
-              .getOrElse(throw new NoSuitableComparatorException(a, b)))
-
-          (comparator.compare(a2, b2), comparator, entry)
+          val (m: CompareValueMethod, e: DomainComparatorEntry) = getNotNullValueComparator(a, b, algoName)
+          Some(m.apply(a, b) > threshold.getOrElse(e.threshold))
       }
     }
 
-    override def compare(a: Any, b: Any, algoName: Option[String]): Option[Double] = {
-      Some(_match(a, b, algoName)._1)
+    override def compareOne(a: Any, b: Any, algoName: Option[String]): Option[Double] = {
+      (a, b) match {
+        case (null, null) => Some(1.0)
+        case (null, _) => Some(0.0)
+        case (_, null) => Some(0.0)
+        case _ =>
+          val (m: CompareValueMethod, e: DomainComparatorEntry) = getNotNullValueComparator(a, b, algoName)
+          Some(m.apply(a, b))
+      }
     }
 
-    override def contains(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean] = {
+    override def compareSet(a: Any, b: Any, algoName: Option[String]): Option[Array[Array[Double]]] = {
+      (a, b) match {
+        case (null, null) => Some(Array(Array(1.0)))
+        case (null, _) => Some(Array(Array(0.0)))
+        case (_, null) => Some(Array(Array(0.1)))
+        case _ =>
+          val (m: CompareSetMethod, e: DomainComparatorEntry) = getNotNullSetComparator(a, b, algoName)
+          Some(m.apply(a, b))
+      }
+    }
+
+    override def containsOne(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean] = {
       (a, b) match {
         case (null, null) => Some(true)
         case (null, _) => Some(false)
         case (_, null) => Some(true)
         case _ =>
-          val (a2, b2, (map, entry)) = groupedSetComparators.get(ValueType.typeNameOf(a, b))
-            .map {
-              (a, b, _)
-            }.getOrElse {
-            (b, a, groupedSetComparators.get(ValueType.typeNameOf(b, a)).getOrElse(throw new NoSuitableComparatorException(a, b)))
-          }
-
-          val comparator = algoName.map(
-            map.get(_)
-              .getOrElse(throw new UnknownAlgorithmException(algoName.get)))
-            .getOrElse(map.headOption.map(_._2)
-              .getOrElse(throw new NoSuitableComparatorException(a, b)))
-
-          val comp = comparator.compare(a2, b2)
-          if (comp.length > 1) {
-            throw new TooManyObjectsException(a2);
-          }
-
-          Some(comp(0).exists(_ > threshold.getOrElse(entry.threshold)))
+          val (m: CompareValueMethod, e: DomainComparatorEntry) = getNotNullValueComparator(a, b, algoName)
+          val r = m.apply(a, b)
+          val th = threshold.getOrElse(e.threshold)
+          Some(r > th)
       }
+    }
+
+    override def containsSet(a: Any, b: Any, algoName: Option[String], threshold: Option[Double]): Option[Boolean] = {
+      (a, b) match {
+        case (null, null) => Some(true)
+        case (null, _) => Some(false)
+        case (_, null) => Some(true)
+        case _ =>
+          val (m: CompareSetMethod, e: DomainComparatorEntry) = getNotNullSetComparator(a, b, algoName)
+          val r = m.apply(a, b)
+          val th = threshold.getOrElse(e.threshold)
+          Some(!r.exists(_.max <= th))
+      }
+    }
+
+    type CompareSetMethod = (Any, Any) => Array[Array[Double]];
+    type CompareValueMethod = (Any, Any) => Double;
+
+    private def getRegisteredComparatorEntry(a: Any, b: Any): (DomainComparatorEntry, Boolean) = {
+      comparators.find(_.domain.equalsIgnoreCase(ValueType.typeNameOf(a, b))).map(_ -> false)
+        .getOrElse(comparators.find(_.domain.equalsIgnoreCase(ValueType.typeNameOf(b, a))).map(_ -> true)
+          .getOrElse(throw new NoSuitableComparatorException(a, b)))
+    }
+
+    private def getRegisteredValueComparator(a: Any, b: Any, algoName: Option[String]): Option[(CompareValueMethod, DomainComparatorEntry)] = {
+      //TODO: use cache
+      val (entry, swap) = getRegisteredComparatorEntry(a, b);
+
+      algoName.map(name =>
+        entry.valueComparators.find(_.name.equalsIgnoreCase(name))
+          .orElse(throw new UnknownAlgorithmException(name)))
+        .getOrElse(entry.valueComparators.headOption)
+        .map { x: NamedValueComparatorEntry =>
+          (if (swap) {
+            (a: Any, b: Any) => x.comparator.compare(b, a)
+          }
+          else {
+            (a: Any, b: Any) => x.comparator.compare(a, b)
+          })
+        }.map(_ -> entry)
+    }
+
+    private def getRegisteredSetComparator(a: Any, b: Any, algoName: Option[String]): Option[(CompareSetMethod, DomainComparatorEntry)] = {
+      //TODO: use cache
+      val (entry, swap) = getRegisteredComparatorEntry(a, b);
+
+      algoName.map(name =>
+        entry.setComparators.find(_.name.equalsIgnoreCase(name))
+          .orElse(throw new UnknownAlgorithmException(name)))
+        .getOrElse(entry.setComparators.headOption)
+        .map { x: NamedSetComparatorEntry =>
+          (if (swap) {
+            (a: Any, b: Any) => x.comparator.compare(b, a)
+          }
+          else {
+            (a: Any, b: Any) => x.comparator.compare(a, b)
+          })
+        }.map(_ -> entry)
+    }
+
+    private def getNotNullValueComparator(a: Any, b: Any, algoName: Option[String]): (CompareValueMethod, DomainComparatorEntry) = {
+      //TODO: use cache
+      val opt = getRegisteredValueComparator(a, b, algoName);
+      opt.orElse(
+        getRegisteredSetComparator(a, b, algoName)
+          .orElse(throw new NoSuitableComparatorException(a, b))
+          .map(en => asCompareValueMethod(en._1.asInstanceOf[CompareSetMethod]) -> en._2))
+        .get
+    }
+
+    private def getNotNullSetComparator(a: Any, b: Any, algoName: Option[String]): (CompareSetMethod, DomainComparatorEntry) = {
+      //TODO: use cache
+      val opt = getRegisteredSetComparator(a, b, algoName);
+      opt.orElse(
+        getRegisteredValueComparator(a, b, algoName)
+          .orElse(throw new NoSuitableComparatorException(a, b))
+          .map(en => asCompareSetMethod(en._1.asInstanceOf[CompareValueMethod]) -> en._2))
+        .get
+    }
+
+    private def asCompareValueMethod(m: CompareSetMethod): CompareValueMethod = {
+      (a: Any, b: Any) =>
+        val r: Array[Array[Double]] = m(a, b);
+        r.flatMap(x => x).max;
+    }
+
+    private def asCompareSetMethod(m: CompareValueMethod): CompareSetMethod = {
+      (a: Any, b: Any) =>
+        val r: Double = m(a, b);
+        Array(Array(r))
     }
   }
 }
@@ -184,7 +258,7 @@ class UnknownPropertyException(name: String, x: Any)
 }
 
 class NoSuitableComparatorException(a: Any, b: Any)
-  extends RuntimeException(s"no suiltable comparator: ${a.getClass.getSimpleName} and ${b.getClass.getSimpleName}") {
+  extends RuntimeException(s"no suiltable comparator: ${ValueType.typeNameOf(a)} and ${ValueType.typeNameOf(b)}") {
 
 }
 

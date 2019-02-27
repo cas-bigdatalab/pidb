@@ -138,6 +138,11 @@ trait Expressions extends Parser
         ((a, b) => AlgoNameWithThresholdExpr(b, Some(a.value)))
   }
 
+  private def AlgoName: Rule1[AlgoNameWithThresholdExpr] = rule("an algorithm with threshold") {
+    group(SymbolicNameString) ~~>>
+      ((a) => AlgoNameWithThresholdExpr(Some(a), None))
+  }
+
   private def Expression3: Rule1[ast.Expression] = rule("an expression") {
     Expression2 ~ zeroOrMore(WS ~ (
       group(operator("=~") ~~ Expression2) ~~>> (RegexMatch(_: ast.Expression, _))
@@ -146,19 +151,28 @@ trait Expressions extends Parser
 
         | group(operator("~:") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticLike(a, b, c))
+          SemanticLikeExpr(a, b, c))
         | group(operator("!:") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticUnlike(a, b, c))
-        | group(operator("::") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
+          SemanticUnlikeExpr(a, b, c))
+        | group(operator(":::") ~ optional(AlgoName) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticCompare(a, b, c))
+          SemanticSetCompareExpr(a, b, c))
+        | group(operator(">>:") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
+        ((a: ast.Expression, b, c) =>
+          SemanticContainSetExpr(a, b, c))
+        | group(operator("<<:") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
+        ((a: ast.Expression, b, c) =>
+          SemanticSetInExpr(a, b, c))
+        | group(operator("::") ~ optional(AlgoName) ~~ Expression2) ~~>>
+        ((a: ast.Expression, b, c) =>
+          SemanticCompareExpr(a, b, c))
         | group(operator(">:") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticContain(a, b, c))
+          SemanticContainExpr(a, b, c))
         | group(operator("<:") ~ optional(AlgoNameWithThreshold) ~~ Expression2) ~~>>
         ((a: ast.Expression, b, c) =>
-          SemanticElementOf(a, b, c))
+          SemanticInExpr(a, b, c))
 
         ////NOTE: semantic operator
 
@@ -174,7 +188,7 @@ trait Expressions extends Parser
   private def Expression2: Rule1[ast.Expression] = rule("an expression") {
     Expression1 ~ zeroOrMore(WS ~ (
       PropertyLookup
-        | operator("->") ~~ (PropertyKeyName ~~>> (CustomProperty(_: ast.Expression, _))) ////NOTE: cypher plus
+        | operator("->") ~~ (PropertyKeyName ~~>> (CustomPropertyExpr(_: ast.Expression, _))) ////NOTE: cypher plus
         | NodeLabels ~~>> (ast.HasLabels(_: ast.Expression, _))
         | "[" ~~ Expression ~~ "]" ~~>> (ast.ContainerIndex(_: ast.Expression, _))
         | "[" ~~ optional(Expression) ~~ ".." ~~ optional(Expression) ~~ "]" ~~>> (ast.ListSlice(_: ast.Expression, _, _))

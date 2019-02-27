@@ -28,8 +28,9 @@ import org.neo4j.cypher.internal.runtime.interpreted.pipes.QueryState
 import org.neo4j.cypher.internal.runtime.interpreted.{ExecutionContext, UpdateCountingQueryContext}
 import org.neo4j.values.AnyValue
 import org.neo4j.values.storable._
+import org.neo4j.values.virtual.VirtualValues
 
-case class BlobLiteralExpression(url: BlobURL) extends Expression {
+case class BlobLiteralCommand(url: BlobURL) extends Expression {
   def apply(ctx: ExecutionContext, state: QueryState): AnyValue = {
     BlobValue(url.createBlob);
   }
@@ -41,20 +42,22 @@ case class BlobLiteralExpression(url: BlobURL) extends Expression {
   override def symbolTableDependencies: Set[String] = Set()
 }
 
-case class CustomPropertyExpression(mapExpr: Expression, propertyKey: KeyToken)
+case class CustomPropertyCommand(mapExpr: Expression, propertyKey: KeyToken)
   extends Expression with Product with Serializable {
-  def apply(ctx: ExecutionContext, state: QueryState): AnyValue = mapExpr(ctx, state) match {
-    case n if n == Values.NO_VALUE => Values.NO_VALUE
 
-    case x: Value =>
-      val pv = state._get("query.inner.transactionalContext.tc.graph.graph.config").asInstanceOf[RuntimeContextHolder]
-        .getRuntimeContext[BlobPropertyStoreService].getCustomPropertyProvider
-        .getCustomProperty(x.asObject, propertyKey.name)
+  def apply(ctx: ExecutionContext, state: QueryState): AnyValue =
+    mapExpr(ctx, state) match {
+      case n if n == Values.NO_VALUE => Values.NO_VALUE
 
-      Values.unsafeOf(pv, true);
-  }
+      case x: Value =>
+        val pv = state._get("query.inner.transactionalContext.tc.graph.graph.config").asInstanceOf[RuntimeContextHolder]
+          .getRuntimeContext[BlobPropertyStoreService].getCustomPropertyProvider
+          .getCustomProperty(x.asObject, propertyKey.name)
 
-  def rewrite(f: (Expression) => Expression) = f(CustomPropertyExpression(mapExpr.rewrite(f), propertyKey.rewrite(f)))
+        Values.unsafeOf(pv, true);
+    }
+
+  def rewrite(f: (Expression) => Expression) = f(CustomPropertyCommand(mapExpr.rewrite(f), propertyKey.rewrite(f)))
 
   override def children = Seq(mapExpr, propertyKey)
 
@@ -103,8 +106,8 @@ trait SemanticOperatorSupport {
   def symbolTableDependencies = lhsExpr.symbolTableDependencies ++ rhsExpr.symbolTableDependencies
 }
 
-case class SemanticLikeExpression(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
-                                 (implicit converter: TextValue => TextValue = identity)
+case class SemanticLikeCommand(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                              (implicit converter: TextValue => TextValue = identity)
   extends Predicate with SemanticOperatorSupport {
   override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
     execute(m, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
@@ -119,24 +122,56 @@ case class SemanticLikeExpression(lhsExpr: Expression, ant: Option[AlgoNameWithT
 
   override def getOperatorString: String = "~:"
 
-  override def rewriteMethod = SemanticLikeExpression(_, _, _)(converter)
+  override def rewriteMethod = SemanticLikeCommand(_, _, _)(converter)
 }
 
 
-case class SemanticUnlikeExpression(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
-                                   (implicit converter: TextValue => TextValue = identity)
+case class SemanticUnlikeCommand(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                                (implicit converter: TextValue => TextValue = identity)
   extends Predicate with SemanticOperatorSupport {
 
   override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
-    new SemanticLikeExpression(lhsExpr, ant, rhsExpr)(converter).isMatch(m, state).map(!_);
+    new SemanticLikeCommand(lhsExpr, ant, rhsExpr)(converter).isMatch(m, state).map(!_);
   }
 
   override def getOperatorString: String = "!:"
 
-  override def rewriteMethod = SemanticUnlikeExpression(_, _, _)(converter)
+  override def rewriteMethod = SemanticUnlikeCommand(_, _, _)(converter)
 }
 
-case class SemanticContainExpression(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+case class SemanticContainCommand(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                                 (implicit converter: TextValue => TextValue = identity)
+  extends Predicate with SemanticOperatorSupport {
+
+  override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
+    execute(m, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
+      (lValue, rValue) match {
+        case (Values.NO_VALUE, Values.NO_VALUE) => Some(true)
+        case (_, Values.NO_VALUE) => Some(false)
+        case (Values.NO_VALUE, _) => Some(false)
+        case (a: Value, b: Value) => bpss.getValueMatcher.containsOne(a.asObject(), b.asObject(), algorithm, threshold)
+      }
+    }
+  }
+
+  override def getOperatorString: String = ">:"
+
+  override def rewriteMethod = SemanticContainCommand(_, _, _)(converter)
+}
+
+case class SemanticInCommand(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                            (implicit converter: TextValue => TextValue = identity)
+  extends Predicate with SemanticOperatorSupport {
+  override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
+    new SemanticContainCommand(rhsExpr, ant, lhsExpr)(converter).isMatch(m, state)
+  }
+
+  override def getOperatorString: String = "<:"
+
+  override def rewriteMethod = SemanticInCommand(_, _, _)(converter)
+}
+
+case class SemanticContainSetCommand(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
                                     (implicit converter: TextValue => TextValue = identity)
   extends Predicate with SemanticOperatorSupport {
 
@@ -146,37 +181,37 @@ case class SemanticContainExpression(lhsExpr: Expression, ant: Option[AlgoNameWi
         case (Values.NO_VALUE, Values.NO_VALUE) => Some(true)
         case (_, Values.NO_VALUE) => Some(false)
         case (Values.NO_VALUE, _) => Some(false)
-        case (a: Value, b: Value) => bpss.getValueMatcher.contains(a.asObject(), b.asObject(), algorithm, threshold)
+        case (a: Value, b: Value) => bpss.getValueMatcher.containsSet(a.asObject(), b.asObject(), algorithm, threshold)
       }
     }
   }
 
-  override def getOperatorString: String = ">:"
+  override def getOperatorString: String = ">>:"
 
-  override def rewriteMethod = SemanticContainExpression(_, _, _)(converter)
+  override def rewriteMethod = SemanticContainSetCommand(_, _, _)(converter)
 }
 
-case class SemanticElementOfExpression(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
-                                      (implicit converter: TextValue => TextValue = identity)
+case class SemanticSetInCommand(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                               (implicit converter: TextValue => TextValue = identity)
   extends Predicate with SemanticOperatorSupport {
   override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
-    new SemanticContainExpression(rhsExpr, ant, lhsExpr)(converter).isMatch(m, state)
+    new SemanticContainSetCommand(rhsExpr, ant, lhsExpr)(converter).isMatch(m, state)
   }
 
-  override def getOperatorString: String = "<:"
+  override def getOperatorString: String = "<<:"
 
-  override def rewriteMethod = SemanticElementOfExpression(_, _, _)(converter)
+  override def rewriteMethod = SemanticSetInCommand(_, _, _)(converter)
 }
 
-case class SemanticCompareExpression(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
-                                    (implicit converter: TextValue => TextValue = identity)
+case class SemanticCompareCommand(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                                 (implicit converter: TextValue => TextValue = identity)
   extends Expression with SemanticOperatorSupport {
 
   override def apply(ctx: ExecutionContext, state: QueryState): AnyValue = {
     execute(ctx, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
       (lValue, rValue) match {
         case (x, y) if x == Values.NO_VALUE || y == Values.NO_VALUE => Values.NO_VALUE
-        case (a: Value, b: Value) => bpss.getValueMatcher.compare(a.asObject, b.asObject(), algorithm).
+        case (a: Value, b: Value) => bpss.getValueMatcher.compareOne(a.asObject, b.asObject(), algorithm).
           map(Values.doubleValue(_)).getOrElse(Values.NO_VALUE)
       }
     }
@@ -184,7 +219,30 @@ case class SemanticCompareExpression(lhsExpr: Expression, ant: Option[AlgoNameWi
 
   override def getOperatorString: String = "::"
 
-  override def rewriteMethod = SemanticCompareExpression(_, _, _)(converter)
+  override def rewriteMethod = SemanticCompareCommand(_, _, _)(converter)
+}
+
+case class SemanticSetCompareCommand(lhsExpr: Expression, ant: Option[AlgoNameWithThresholdExpr], rhsExpr: Expression)
+                                    (implicit converter: TextValue => TextValue = identity)
+  extends Expression with SemanticOperatorSupport {
+
+  override def apply(ctx: ExecutionContext, state: QueryState): AnyValue = {
+    execute(ctx, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
+      (lValue, rValue) match {
+        case (x, y) if x == Values.NO_VALUE || y == Values.NO_VALUE => Values.NO_VALUE
+        case (a: Value, b: Value) => bpss.getValueMatcher.compareSet(a.asObject, b.asObject(), algorithm).
+          map {
+          aa => VirtualValues.list(aa.map {
+            a => VirtualValues.list(a.map(x => Values.doubleValue(x)).toSeq: _*)
+          }.toSeq: _*)
+        }.getOrElse(Values.NO_VALUE)
+      }
+    }
+  }
+
+  override def getOperatorString: String = ":::"
+
+  override def rewriteMethod = SemanticSetCompareCommand(_, _, _)(converter)
 }
 
 class InvalidSemanticOperatorException(compared: AnyValue) extends RuntimeException {

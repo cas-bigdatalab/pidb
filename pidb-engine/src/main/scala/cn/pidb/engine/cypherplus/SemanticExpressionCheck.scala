@@ -18,7 +18,6 @@ package org.neo4j.cypher.internal.frontend.v3_4.semantics
 
 import cn.pidb.engine.cypherplus._
 import org.neo4j.cypher.internal.frontend.v3_4.ast.rewriters.DesugaredMapProjection
-import org.neo4j.cypher.internal.frontend.v3_4.semantics.SemanticExpressionCheck._
 import org.neo4j.cypher.internal.frontend.v3_4.{SemanticCheck, TypeGenerator}
 import org.neo4j.cypher.internal.util.v3_4.symbols._
 import org.neo4j.cypher.internal.v3_4.expressions.Expression.SemanticContext
@@ -50,7 +49,7 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
 
       // ARITHMETICS
 
-      case x:Add =>
+      case x: Add =>
         check(ctx, x.lhs) chain
           expectType(TypeSpec.all, x.lhs) chain
           check(ctx, x.rhs) chain
@@ -58,175 +57,202 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
           specifyType(infixAddOutputTypes(x.lhs, x.rhs), x) chain
           checkAddBoundary(x)
 
-      case x:Subtract =>
+      case x: Subtract =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures) chain
           checkSubtractBoundary(x)
 
-      case x:UnarySubtract =>
+      case x: UnarySubtract =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:Multiply =>
+      case x: Multiply =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures) chain
           checkMultiplyBoundary(x)
 
-      case x:Divide =>
+      case x: Divide =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:Modulo =>
+      case x: Modulo =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:Pow =>
+      case x: Pow =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
       // PREDICATES
 
-      case x:Not =>
+      case x: Not =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:Equals =>
+      case x: Equals =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:NotEquals =>
+      case x: NotEquals =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:InvalidNotEquals =>
+      case x: InvalidNotEquals =>
         SemanticError(
           "Unknown operation '!=' (you probably meant to use '<>', which is the operator for inequality testing)",
           x.position)
 
-      case x:RegexMatch =>
+      case x: RegexMatch =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
       ////NOTE: semantic <!--
 
-      case x:SemanticLike =>
+      case x: BlobLiteralExpr =>
+        specifyType(CTBlob, x)
+
+      case x: AlgoNameWithThresholdExpr =>
+        (state: SemanticState) =>
+          x.threshold.map(y =>
+            if (y > 1.0 || y < 0.0) {
+              SemanticCheckResult.error(state, SemanticError(
+                s"wrong threshold value: ${y}, should be in [0,1]", x.position))
+            }
+            else {
+              SemanticCheckResult.success(state)
+            }
+          ).getOrElse(SemanticCheckResult.success(state))
+
+      case x: SemanticLikeExpr =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:CustomProperty =>
+      case x: CustomPropertyExpr =>
         check(ctx, x.map) chain
           expectType(CTAny.covariant, x.map) chain //NOTE: enable property of blob property
           specifyType(CTAny.covariant, x)
 
-      case x:SemanticCompare =>
+      case x: SemanticUnlikeExpr =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:SemanticUnlike =>
+      case x: SemanticCompareExpr =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:SemanticContain =>
+      case x: SemanticContainExpr =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:SemanticElementOf =>
+      case x: SemanticInExpr =>
+        check(ctx, x.arguments) chain
+          checkTypes(x, x.signatures)
+
+      case x: SemanticSetCompareExpr =>
+        check(ctx, x.arguments) chain
+          checkTypes(x, x.signatures)
+
+      case x: SemanticContainSetExpr =>
+        check(ctx, x.arguments) chain
+          checkTypes(x, x.signatures)
+
+      case x: SemanticSetInExpr =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
       ////NOTE: semantic -->
 
-      case x:And =>
+      case x: And =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:Or =>
+      case x: Or =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:Xor =>
+      case x: Xor =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:Ands =>
+      case x: Ands =>
         check(ctx, x.exprs)
 
-      case x:Ors =>
+      case x: Ors =>
         check(ctx, x.exprs)
 
-      case x:In =>
+      case x: In =>
         check(ctx, x.lhs) chain
           expectType(CTAny.covariant, x.lhs) chain
           check(ctx, x.rhs) chain
           expectType(CTList(CTAny).covariant, x.rhs) chain
           specifyType(CTBoolean, x)
 
-      case x:StartsWith =>
+      case x: StartsWith =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:EndsWith =>
+      case x: EndsWith =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:Contains =>
+      case x: Contains =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:IsNull =>
+      case x: IsNull =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:IsNotNull =>
+      case x: IsNotNull =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:LessThan =>
+      case x: LessThan =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:LessThanOrEqual =>
+      case x: LessThanOrEqual =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:GreaterThan =>
+      case x: GreaterThan =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:GreaterThanOrEqual =>
+      case x: GreaterThanOrEqual =>
         check(ctx, x.arguments) chain
           checkTypes(x, x.signatures)
 
-      case x:PartialPredicate[_] =>
+      case x: PartialPredicate[_] =>
         check(ctx, x.coveredPredicate)
 
       //
 
-      case x:CaseExpression =>
+      case x: CaseExpression =>
         val possibleTypes = unionOfTypes(x.possibleExpressions)
         SemanticExpressionCheck.check(ctx, x.expression) chain
           check(ctx, x.alternatives.flatMap { a => Seq(a._1, a._2) }) chain
           check(ctx, x.default) chain
-          when (x.expression.isEmpty) {
+          when(x.expression.isEmpty) {
             expectType(CTBoolean.covariant, x.alternatives.map(_._1))
           } chain
           specifyType(possibleTypes, x)
 
-      case x:AndedPropertyInequalities =>
+      case x: AndedPropertyInequalities =>
         x.inequalities.map(check(ctx, _)).reduceLeft(_ chain _)
 
-      case x:CoerceTo =>
+      case x: CoerceTo =>
         check(ctx, x.expr) chain expectType(x.typ.covariant, x.expr)
 
-      case x:Property =>
+      case x: Property =>
         check(ctx, x.map) chain
           expectType(CTMap.covariant | CTNode.covariant | CTRelationship.covariant | CTPoint.covariant | CTDate.covariant | CTTime.covariant |
-            CTLocalTime.covariant | CTLocalDateTime.covariant | CTDateTime.covariant | CTDuration.covariant| CTAny.invariant, x.map) chain
+            CTLocalTime.covariant | CTLocalDateTime.covariant | CTDateTime.covariant | CTDuration.covariant | CTAny.invariant, x.map) chain
           specifyType(CTAny.covariant, x)
 
       // Check the variable is defined and, if not, define it so that later errors are suppressed
       // This is used in expressions; in graphs we must make sure to sem check variables explicitly (!)
-      case x:Variable =>
+      case x: Variable =>
         s => s.ensureVariableDefined(x) match {
           case Right(ss) => SemanticCheckResult.success(ss)
           case Left(error) => s.declareVariable(x, CTAny.covariant) match {
@@ -236,42 +262,42 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
           }
         }
 
-      case x:FunctionInvocation =>
+      case x: FunctionInvocation =>
         SemanticFunctionCheck.check(ctx, x)
 
-      case x:GetDegree =>
+      case x: GetDegree =>
         check(ctx, x.node) chain
           expectType(CTMap.covariant | CTAny.invariant, x.node) chain
           specifyType(CTAny.covariant, x)
 
-      case x:Parameter =>
+      case x: Parameter =>
         specifyType(x.parameterType.covariant, x)
 
-      case x:HasLabels =>
+      case x: HasLabels =>
         check(ctx, x.expression) chain
           expectType(CTNode.covariant, x.expression) chain
           specifyType(CTBoolean, x)
 
       // ITERABLES
 
-      case x:FilterExpression =>
+      case x: FilterExpression =>
         FilteringExpressions.checkPredicateDefined(x) chain
           FilteringExpressions.semanticCheck(ctx, x) chain
           specifyType(types(x.expression), x)
 
-      case x:ExtractExpression =>
+      case x: ExtractExpression =>
         FilteringExpressions.checkPredicateNotDefined(x) chain
           checkExtractExpressionDefined(x) chain
           FilteringExpressions.semanticCheck(ctx, x) chain
           checkInnerExtractExpression(x) chain
           FilteringExpressions.failIfAggregating(x.extractExpression)
 
-      case x:ListComprehension =>
+      case x: ListComprehension =>
         FilteringExpressions.semanticCheck(ctx, x) chain
           checkInnerListComprehension(x) chain
           FilteringExpressions.failIfAggregating(x.extractExpression)
 
-      case x:PatternComprehension =>
+      case x: PatternComprehension =>
         SemanticState.recordCurrentScope(x) chain
           withScopedState {
             SemanticPatternCheck.check(Pattern.SemanticContext.Match, x.pattern) chain
@@ -283,31 +309,31 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
           specifyType(outerTypes, x)
         }
 
-      case _:FilterScope => SemanticCheckResult.success
-      case _:ExtractScope => SemanticCheckResult.success
-      case _:ReduceScope => SemanticCheckResult.success
+      case _: FilterScope => SemanticCheckResult.success
+      case _: ExtractScope => SemanticCheckResult.success
+      case _: ReduceScope => SemanticCheckResult.success
 
-      case x:CountStar =>
+      case x: CountStar =>
         specifyType(CTInteger, x)
 
-      case x:PathExpression =>
+      case x: PathExpression =>
         specifyType(CTPath, x)
 
-      case x:ShortestPathExpression =>
+      case x: ShortestPathExpression =>
         SemanticPatternCheck.declareVariables(Pattern.SemanticContext.Expression)(x.pattern) chain
           SemanticPatternCheck.check(Pattern.SemanticContext.Expression)(x.pattern) chain
           specifyType(if (x.pattern.single) CTPath else CTList(CTPath), x)
 
-      case x:PatternExpression =>
+      case x: PatternExpression =>
         SemanticPatternCheck.check(Pattern.SemanticContext.Expression, x.pattern) chain
           specifyType(CTList(CTPath), x)
 
-      case x:IterablePredicateExpression =>
+      case x: IterablePredicateExpression =>
         FilteringExpressions.checkPredicateDefined(x) chain
           FilteringExpressions.semanticCheck(ctx, x) chain
           specifyType(CTBoolean, x)
 
-      case x:ReduceExpression =>
+      case x: ReduceExpression =>
         check(ctx, x.init) chain
           check(ctx, x.list) chain
           expectType(CTList(CTAny).covariant, x.list) chain
@@ -324,14 +350,14 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
           specifyType(s => types(x.init)(s) leastUpperBounds types(x.expression)(s), x) chain
           FilteringExpressions.failIfAggregating(x.expression)
 
-      case x:ListLiteral =>
+      case x: ListLiteral =>
         def possibleTypes: TypeGenerator = state => x.expressions match {
           case Seq() => CTList(CTAny).covariant
-          case _     => leastUpperBoundsOfTypes(x.expressions)(state).wrapInCovariantList
+          case _ => leastUpperBoundsOfTypes(x.expressions)(state).wrapInCovariantList
         }
         check(ctx, x.expressions) chain specifyType(possibleTypes, x)
 
-      case x:ListSlice =>
+      case x: ListSlice =>
         check(ctx, x.list) chain
           expectType(CTList(CTAny).covariant, x.list) chain
           when(x.from.isEmpty && x.to.isEmpty) {
@@ -343,7 +369,7 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
           expectType(CTInteger.covariant, x.to) chain
           specifyType(types(x.list), x)
 
-      case x:ContainerIndex =>
+      case x: ContainerIndex =>
         check(ctx, x.expr) chain
           check(ctx, x.idx) chain
           typeSwitch(x.expr) {
@@ -375,28 +401,28 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
 
       // MAPS
 
-      case x:MapExpression =>
+      case x: MapExpression =>
         check(ctx, x.items.map(_._2)) chain
           specifyType(CTMap, x)
 
-      case x:MapProjection =>
+      case x: MapProjection =>
         check(ctx, x.items) chain
           specifyType(CTMap, x) ifOkChain // We need to remember the scope to later rewrite this ASTNode
           SemanticState.recordCurrentScope(x)
 
-      case x:LiteralEntry =>
+      case x: LiteralEntry =>
         check(ctx, x.exp)
 
-      case x:VariableSelector =>
+      case x: VariableSelector =>
         check(ctx, x.id)
 
-      case x:PropertySelector =>
+      case x: PropertySelector =>
         SemanticCheckResult.success
 
-      case x:AllPropertiesSelector =>
+      case x: AllPropertiesSelector =>
         SemanticCheckResult.success
 
-      case x:DesugaredMapProjection =>
+      case x: DesugaredMapProjection =>
         check(ctx, x.items) chain
           ensureDefined(x.name) chain
           specifyType(CTMap, x) ifOkChain // We need to remember the scope to later rewrite this ASTNode
@@ -405,7 +431,7 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
 
       // LITERALS
 
-      case x:DecimalIntegerLiteral =>
+      case x: DecimalIntegerLiteral =>
         when(!validNumber(x)) {
           if (x.stringVal matches "^-?[1-9][0-9]*$")
             SemanticError("integer is too large", x.position)
@@ -413,7 +439,7 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
             SemanticError("invalid literal number", x.position)
         } chain specifyType(CTInteger, x)
 
-      case x:OctalIntegerLiteral =>
+      case x: OctalIntegerLiteral =>
         when(!validNumber(x)) {
           if (x.stringVal matches "^-?0[0-7]+$")
             SemanticError("integer is too large", x.position)
@@ -421,7 +447,7 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
             SemanticError("invalid literal number", x.position)
         } chain specifyType(CTInteger, x)
 
-      case x:HexIntegerLiteral =>
+      case x: HexIntegerLiteral =>
         when(!validNumber(x)) {
           if (x.stringVal matches "^-?0x[0-9a-fA-F]+$")
             SemanticError("integer is too large", x.position)
@@ -429,7 +455,7 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
             SemanticError("invalid literal number", x.position)
         } chain specifyType(CTInteger, x)
 
-      case x:DecimalDoubleLiteral =>
+      case x: DecimalDoubleLiteral =>
         when(!validNumber(x)) {
           SemanticError("invalid literal number", x.position)
         } ifOkChain
@@ -437,22 +463,19 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
             SemanticError("floating point number is too large", x.position)
           } chain specifyType(CTFloat, x)
 
-      case x:StringLiteral =>
+      case x: StringLiteral =>
         specifyType(CTString, x)
 
-      case x:BlobLiteralExpr =>
-        specifyType(CTBlob, x)
-
-      case x:Null =>
+      case x: Null =>
         specifyType(CTAny.covariant, x)
 
-      case x:BooleanLiteral =>
+      case x: BooleanLiteral =>
         specifyType(CTBoolean, x)
 
-      case x:SemanticCheckableExpression =>
+      case x: SemanticCheckableExpression =>
         x.semanticCheck(ctx)
 
-      case x:Expression => semanticCheckFallback(ctx, x)
+      case x: Expression => semanticCheckFallback(ctx, x)
     }
 
   /**
@@ -478,7 +501,7 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
 
   object FilteringExpressions {
 
-    def semanticCheck(ctx: SemanticContext, e: FilteringExpression):SemanticCheck =
+    def semanticCheck(ctx: SemanticContext, e: FilteringExpression): SemanticCheck =
       SemanticExpressionCheck.check(ctx, e.expression) chain
         expectType(CTList(CTAny).covariant, e.expression) chain
         checkInnerPredicate(e) chain
@@ -494,12 +517,12 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
       )
 
     def checkPredicateDefined(e: FilteringExpression): SemanticCheck =
-      when (e.innerPredicate.isEmpty) {
+      when(e.innerPredicate.isEmpty) {
         SemanticError(s"${e.name}(...) requires a WHERE predicate", e.position)
       }
 
     def checkPredicateNotDefined(e: FilteringExpression): SemanticCheck =
-      when (e.innerPredicate.isDefined) {
+      when(e.innerPredicate.isDefined) {
         SemanticError(s"${e.name}(...) should not contain a WHERE predicate", e.position)
       }
 
@@ -521,21 +544,21 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
 
   private def checkAddBoundary(add: Add): SemanticCheck =
     (add.lhs, add.rhs) match {
-      case (l:IntegerLiteral, r:IntegerLiteral) if Try(Math.addExact(l.value, r.value)).isFailure =>
+      case (l: IntegerLiteral, r: IntegerLiteral) if Try(Math.addExact(l.value, r.value)).isFailure =>
         SemanticError(s"result of ${l.stringVal} + ${r.stringVal} cannot be represented as an integer", add.position)
       case _ => SemanticCheckResult.success
     }
 
   private def checkSubtractBoundary(subtract: Subtract): SemanticCheck =
     (subtract.lhs, subtract.rhs) match {
-      case (l:IntegerLiteral, r:IntegerLiteral) if Try(Math.subtractExact(l.value, r.value)).isFailure =>
+      case (l: IntegerLiteral, r: IntegerLiteral) if Try(Math.subtractExact(l.value, r.value)).isFailure =>
         SemanticError(s"result of ${l.stringVal} - ${r.stringVal} cannot be represented as an integer", subtract.position)
       case _ => SemanticCheckResult.success
     }
 
   private def checkMultiplyBoundary(multiply: Multiply): SemanticCheck =
     (multiply.lhs, multiply.rhs) match {
-      case (l:IntegerLiteral, r:IntegerLiteral) if Try(Math.multiplyExact(l.value, r.value)).isFailure =>
+      case (l: IntegerLiteral, r: IntegerLiteral) if Try(Math.multiplyExact(l.value, r.value)).isFailure =>
         SemanticError(s"result of ${l.stringVal} * ${r.stringVal} cannot be represented as an integer", multiply.position)
       case _ => SemanticCheckResult.success
     }
@@ -648,7 +671,7 @@ object SemanticExpressionCheck extends SemanticAnalysisTooling {
   }
 
   private def checkExtractExpressionDefined(x: ExtractExpression): SemanticCheck =
-    when (x.scope.extractExpression.isEmpty) {
+    when(x.scope.extractExpression.isEmpty) {
       SemanticError(s"${x.name}(...) requires '| expression' (an extract expression)", x.position)
     }
 
