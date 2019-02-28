@@ -8,6 +8,7 @@ import scala.util.parsing.json.JSON
 
 
 class Services(private val _aipmHttpHostUrl:String) {
+  //TODO: hard coding, try <baseUrl>/service/<algorithm name>
   val servicesPath = Map(
     "FaceSim"-> "service/face/similarity/",
     "FaceInPhoto"-> "service/face/in_photo/",
@@ -24,7 +25,7 @@ class Services(private val _aipmHttpHostUrl:String) {
     }
   }
 
-
+  //TOOD: extract a common function with user-defined input/output paramenters
   def computeFaceSimilarity(img1InputStream:InputStream,img2InputStream:InputStream): List[List[Double]]={
     val serviceUrl = getServiceUrl("FaceSim")
 
@@ -112,5 +113,7 @@ class Services(private val _aipmHttpHostUrl:String) {
 }
 
 object Services{
+  //TOOD: caching?
+  //TODO: rename initialize--> create?
   def initialize(aipmHttpHostUrl:String):Services = new Services(aipmHttpHostUrl)
 }
