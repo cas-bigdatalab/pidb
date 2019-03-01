@@ -49,7 +49,10 @@ object WebUtils {
       val mEntityBuilder = MultipartEntityBuilder.create()
       mEntityBuilder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE)
       for ((key , value) <- strContents){
-        mEntityBuilder.addTextBody(key,value)
+        import org.apache.http.entity.ContentType
+        import java.nio.charset.Charset
+        val strContent = ContentType.create("text/plain", Charset.forName("UTF-8"))
+        mEntityBuilder.addTextBody(key,value,strContent)
       }
       for ((key , value) <- fileContents){
         mEntityBuilder.addBinaryBody(key,value)
