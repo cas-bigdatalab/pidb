@@ -6,7 +6,7 @@ import org.junit.{Assert, Test}
 
 
 class ServicesTest {
-  val hostUrl = "http://10.0.86.128:8082/"
+  val hostUrl = "http://10.0.86.128:8081/"
 
   @Test
   def test1(): Unit = {
@@ -46,6 +46,14 @@ class ServicesTest {
     val in1 = new FileInputStream(file1)
     val content = Services.initialize(hostUrl).mandarinASR(in1)
     print(content)
+  }
+
+  @Test
+  def testSentiment(): Unit = {
+    var text = "非常不开心"
+
+    val sentiment = Services.initialize(hostUrl).sentimentClassifier(text)
+    print(sentiment)
   }
 
 

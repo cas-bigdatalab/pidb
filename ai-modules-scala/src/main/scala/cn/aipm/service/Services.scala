@@ -14,7 +14,8 @@ class Services(private val _aipmHttpHostUrl:String) {
     "FaceInPhoto"-> "service/face/in_photo/",
     "PlateNumber"-> "service/plate/",
     "ClassifyAnimal"-> "service/classify/dogorcat/",
-    "MandarinASR"-> "service/asr/"
+    "MandarinASR"-> "service/asr/",
+    "ClassifySentiment" -> "service/sentiment/classifier"
   )
   def getServiceUrl(name:String):String = {
     if (_aipmHttpHostUrl.endsWith("/")){
@@ -102,6 +103,22 @@ class Services(private val _aipmHttpHostUrl:String) {
     val res = WebUtils.doPost(serviceUrl, inStreamContents = contents)
     val json: Option[Any] = JSON.parseFull(res)
     val map: Map[String, Any] = json.get.asInstanceOf[Map[String, Any]]
+    if (map("res").asInstanceOf[Boolean]) {
+      map("value").asInstanceOf[String]
+    }
+    else {
+      ""
+    }
+  }
+
+  def sentimentClassifier(text: String): String = {
+    val serviceUrl = getServiceUrl("ClassifySentiment")
+    val contents = Map("text" -> text)
+
+    val res = WebUtils.doPost(serviceUrl, strContents = contents)
+    val json: Option[Any] = JSON.parseFull(res)
+    val map: Map[String, Any] = json.get.asInstanceOf[Map[String, Any]]
+
     if (map("res").asInstanceOf[Boolean]) {
       map("value").asInstanceOf[String]
     }
