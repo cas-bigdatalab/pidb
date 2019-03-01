@@ -9,6 +9,7 @@ import org.apache.http.impl.client.HttpClients
 import org.apache.http.util.EntityUtils
 import org.apache.http.{HttpEntity, HttpStatus}
 import org.apache.http.conn.HttpHostConnectException
+import java.nio.charset.Charset
 
 import scala.collection.immutable.Map
 import scala.collection.mutable.ListBuffer
@@ -49,8 +50,7 @@ object WebUtils {
       val mEntityBuilder = MultipartEntityBuilder.create()
       mEntityBuilder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE)
       for ((key , value) <- strContents){
-        import org.apache.http.entity.ContentType
-        import java.nio.charset.Charset
+
         val strContent = ContentType.create("text/plain", Charset.forName("UTF-8"))
         mEntityBuilder.addTextBody(key,value,strContent)
       }
