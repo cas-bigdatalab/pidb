@@ -14,6 +14,12 @@
                 </bean>
                 <bean class="cn.pidb.engine.cypherplus.DomainExtractorEntry">
                     <property name="extractor">
+                        <bean class="cn.aipm.text.SentimentClassifier"/>
+                    </property>
+                    <property name="domain" value="string"/>
+                </bean>
+                <bean class="cn.pidb.engine.cypherplus.DomainExtractorEntry">
+                    <property name="extractor">
                         <bean class="cn.aipm.CommonBlobPropertyExtractor"/>
                     </property>
                     <property name="domain" value="blob/*"/>
@@ -42,47 +48,35 @@
         <property name="comparators">
             <list>
                 <bean class="cn.pidb.engine.cypherplus.DomainComparatorEntry">
+                    <property name="name" value="face"/>
                     <property name="domain" value="blob/image:blob/image"/>
                     <property name="threshold" value="0.6"/>
-                    <property name="valueComparators">
-                        <list>
-                        </list>
-                    </property>
-                    <property name="setComparators">
-                        <list>
-                            <bean class="cn.pidb.engine.cypherplus.NamedSetComparatorEntry">
-                                <property name="name" value="face"/>
-                                <property name="comparator">
-                                    <bean class="cn.aipm.image.FaceSimilarityComparator"/>
-                                </property>
-                            </bean>
-                        </list>
+                    <property name="comparator">
+                        <bean class="cn.aipm.image.FaceSimilarityComparator"/>
                     </property>
                 </bean>
                 <bean class="cn.pidb.engine.cypherplus.DomainComparatorEntry">
+                    <property name="name" value="jaro"/>
                     <property name="domain" value="string:string"/>
                     <property name="threshold" value="0.7"/>
-                    <property name="valueComparators">
-                        <list>
-                            <bean class="cn.pidb.engine.cypherplus.NamedValueComparatorEntry">
-                                <property name="name" value="jaro"/>
-                                <property name="comparator">
-                                    <bean class="cn.aipm.string.JaroWinklerStringSimilarity"/>
-                                </property>
-                            </bean>
-                            <bean class="cn.pidb.engine.cypherplus.NamedValueComparatorEntry">
-                                <property name="name" value="jaccard"/>
-                                <property name="comparator">
-                                    <bean class="cn.aipm.string.JaccardStringSimilarity"/>
-                                </property>
-                            </bean>
-                            <bean class="cn.pidb.engine.cypherplus.NamedValueComparatorEntry">
-                                <property name="name" value="cosine"/>
-                                <property name="comparator">
-                                    <bean class="cn.aipm.string.CosineStringSimilarity"/>
-                                </property>
-                            </bean>
-                        </list>
+                    <property name="comparator">
+                        <bean class="cn.aipm.text.JaroWinklerStringSimilarity"/>
+                    </property>
+                </bean>
+                <bean class="cn.pidb.engine.cypherplus.DomainComparatorEntry">
+                    <property name="name" value="jaccard"/>
+                    <property name="domain" value="string:string"/>
+                    <property name="threshold" value="0.7"/>
+                    <property name="comparator">
+                        <bean class="cn.aipm.text.JaccardStringSimilarity"/>
+                    </property>
+                </bean>
+                <bean class="cn.pidb.engine.cypherplus.DomainComparatorEntry">
+                    <property name="name" value="cosine"/>
+                    <property name="domain" value="string:string"/>
+                    <property name="threshold" value="0.7"/>
+                    <property name="comparator">
+                        <bean class="cn.aipm.text.CosineStringSimilarity"/>
                     </property>
                 </bean>
             </list>

@@ -54,7 +54,7 @@ case class CustomPropertyCommand(mapExpr: Expression, propertyKey: KeyToken)
           .getRuntimeContext[BlobPropertyStoreService].getCustomPropertyProvider
           .getCustomProperty(x.asObject, propertyKey.name)
 
-        Values.unsafeOf(pv, true);
+        pv.map(Values.unsafeOf(_, true)).getOrElse(Values.NO_VALUE)
     }
 
   def rewrite(f: (Expression) => Expression) = f(CustomPropertyCommand(mapExpr.rewrite(f), propertyKey.rewrite(f)))
@@ -232,10 +232,10 @@ case class SemanticSetCompareCommand(lhsExpr: Expression, ant: Option[AlgoNameWi
         case (x, y) if x == Values.NO_VALUE || y == Values.NO_VALUE => Values.NO_VALUE
         case (a: Value, b: Value) => bpss.getValueMatcher.compareSet(a.asObject, b.asObject(), algorithm).
           map {
-          aa => VirtualValues.list(aa.map {
-            a => VirtualValues.list(a.map(x => Values.doubleValue(x)).toSeq: _*)
-          }.toSeq: _*)
-        }.getOrElse(Values.NO_VALUE)
+            aa => VirtualValues.list(aa.map {
+              a => VirtualValues.list(a.map(x => Values.doubleValue(x)).toSeq: _*)
+            }.toSeq: _*)
+          }.getOrElse(Values.NO_VALUE)
       }
     }
   }

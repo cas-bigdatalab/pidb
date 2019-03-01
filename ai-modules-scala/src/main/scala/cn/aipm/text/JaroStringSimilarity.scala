@@ -1,6 +1,6 @@
-package cn.aipm.string
+package cn.aipm.text
 
-import cn.pidb.blob.{ValueComparator}
+import cn.pidb.blob.ValueComparator
 import cn.pidb.util.Config
 import info.debatty.java.stringsimilarity.{Cosine, Jaccard, JaroWinkler}
 

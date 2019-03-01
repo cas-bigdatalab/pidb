@@ -10,20 +10,14 @@ trait PropertyExtractor {
   def extract(value: Any): Map[String, Any];
 }
 
-trait ValueComparator {
-  /**
-    * @return 0~1
-    */
-  def compare(a: Any, b: Any): Double;
-
+trait AnyComparator {
   def initialize(conf: Config);
 }
 
-trait SetComparator {
-  /**
-    * @return 0~1
-    */
-  def compare(a: Any, b: Any): Array[Array[Double]];
+trait ValueComparator extends AnyComparator {
+  def compare(a: Any, b: Any): Double;
+}
 
-  def initialize(conf: Config);
+trait SetComparator extends AnyComparator {
+  def compareAsSets(a: Any, b: Any): Array[Array[Double]];
 }
