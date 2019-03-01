@@ -9,7 +9,7 @@ import cn.pidb.util.ConfigEx._
 class FaceSimilarityComparator extends SetComparator {
   var aipmHttpHostUrl = "http://127.0.0.1/"
 
-  def compare(blob1: Any, blob2: Any): Array[Array[Double]] = {
+  def compareAsSets(blob1: Any, blob2: Any): Array[Array[Double]] = {
     blob1.asInstanceOf[Blob].offerStream(is1=>{
       blob2.asInstanceOf[Blob].offerStream(is2=>{
         val temp = Services.initialize(aipmHttpHostUrl).computeFaceSimilarity(is1,is2)
