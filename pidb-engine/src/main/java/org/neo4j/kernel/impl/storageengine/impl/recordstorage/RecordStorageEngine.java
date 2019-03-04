@@ -313,7 +313,7 @@ public class RecordStorageEngine implements StorageEngine, Lifecycle
             countsRecordState.extractCommands( commands );
 
             //NOTE: add blob support
-            //commands.add(new BlobValueBatchFlushCommand(txState));
+            commands.add(new BlobValueBatchFlushCommand(neoStores, txState, recordState));
         }
     }
 

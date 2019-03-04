@@ -22,18 +22,27 @@ import scala.concurrent.forkjoin.ForkJoinPool
 
 trait Bufferable {
 
-  def getAllBlob : Iterable[BlobId]
+  def getAllBlob: Iterable[BlobId]
 
-  def loadBlobBatch (BlobIds : Iterable[BlobId]) : Iterable[Blob]
+  def loadBlobBatch(BlobIds: Iterable[BlobId]): Iterable[Blob]
 
 }
 
+//FIXME: choose better class name, this class is designed only for blob storage, not for nodes/properties
 trait Storage extends BlobStorage with Logging {
-  protected var _blobIdFac : BlobIdFactory = _
-  def getIdFac : BlobIdFactory = _blobIdFac
-  def check(bid : BlobId) : Boolean
+  protected var _blobIdFac: BlobIdFactory = _
 
-  def deleteBatch(bids: Iterable[BlobId]) : Unit = bids.foreach(delete)
+  def getIdFac: BlobIdFactory = _blobIdFac
+
+  def check(bid: BlobId): Boolean
+
+  def delete(bid: BlobId): Unit;
+
+  def save(bid: BlobId, blob: Blob): Unit;
+
+  def load(bid: BlobId): InputStreamSource;
+
+  def deleteBatch(bids: Iterable[BlobId]): Unit = bids.foreach(delete)
 
   def saveBatch(blobs: Iterable[(BlobId, Blob)]): Unit = blobs.foreach(a => save(a._1, a._2))
 
@@ -41,8 +50,9 @@ trait Storage extends BlobStorage with Logging {
 
   def loadBatch(bids: Iterable[BlobId]): Iterable[InputStreamSource] = bids.map(load)
 }
+
 // TODO ref
-class HybridStorage(persistStorage : Storage, val buffer : Buffer) extends Storage {
+class HybridStorage(persistStorage: Storage, val buffer: Buffer) extends Storage {
 
   override def deleteBatch(bids: Iterable[BlobId]): Unit = {
     buffer.getBufferableStorage.deleteBatch(bids)
@@ -56,9 +66,9 @@ class HybridStorage(persistStorage : Storage, val buffer : Buffer) extends Stora
 
   override def loadBatch(bids: Iterable[BlobId]): Iterable[InputStreamSource] = persistStorage.loadBatch(bids)
 
-  override def initialize(storeDir: File, blobIdFac : BlobIdFactory, conf: Config): Unit = {
+  override def initialize(storeDir: File, blobIdFac: BlobIdFactory, conf: Config): Unit = {
     buffer.checkInit()
-    buffer.initialize(storeDir,blobIdFac ,conf)
+    buffer.initialize(storeDir, blobIdFac, conf)
   }
 
   override def disconnect(): Unit = {
@@ -68,11 +78,11 @@ class HybridStorage(persistStorage : Storage, val buffer : Buffer) extends Stora
 
   override def save(bid: BlobId, blob: Blob): Unit = buffer.getBufferableStorage.save(bid, blob)
 
-  override def load(bid: BlobId): InputStreamSource =  persistStorage.load(bid)
+  override def load(bid: BlobId): InputStreamSource = persistStorage.load(bid)
 
-  override def check(bid: BlobId): Boolean =  buffer.getBufferableStorage.check(bid) || persistStorage.check(bid)
+  override def check(bid: BlobId): Boolean = buffer.getBufferableStorage.check(bid) || persistStorage.check(bid)
 
-  override def delete(bid: BlobId): Unit =  {
+  override def delete(bid: BlobId): Unit = {
     buffer.getBufferableStorage.delete(bid)
     persistStorage.delete(bid)
   }
@@ -82,13 +92,13 @@ class HBaseStorage extends Storage {
   private var _table: Table = _
   private var conn: Connection = _
 
-  override def delete(bid : BlobId) : Unit =
+  override def delete(bid: BlobId): Unit =
     _table.delete(HBaseUtils.buildDelete(bid))
 
   override def deleteBatch(bids: Iterable[BlobId]): Unit =
     _table.delete(bids.map(f => HBaseUtils.buildDelete(f)).toList)
 
-  override def initialize(storeDir: File, blobIdFac : BlobIdFactory, conf: Config): Unit = {
+  override def initialize(storeDir: File, blobIdFac: BlobIdFactory, conf: Config): Unit = {
     val hbaseConf = HBaseConfiguration.create()
     val zkQ = conf.getValueAsString("blob.storage.hbase.zookeeper.quorum", "localhost")
     val zkNode = conf.getValueAsString("blog.storage.hbase.zookeeper.znode.parent", "/hbase")
@@ -140,9 +150,9 @@ class HBaseStorage extends Storage {
 }
 
 class FileStorage extends Storage with Bufferable {
-  var _blobDir : File = _
+  var _blobDir: File = _
 
-  override def initialize(storeDir: File, blobIdFac : BlobIdFactory, conf: Config): Unit = {
+  override def initialize(storeDir: File, blobIdFac: BlobIdFactory, conf: Config): Unit = {
     val baseDir: File = storeDir; //new File(conf.getRaw("unsupported.dbms.directories.neo4j_home").get());
     _blobDir = conf.getAsFile("blob.storage.file.dir", baseDir, new File(baseDir, "/blob"))
     if (!_blobDir.exists()) {
@@ -155,8 +165,8 @@ class FileStorage extends Storage with Bufferable {
   override def disconnect(): Unit = {
   }
 
-  override def delete (bid : BlobId) : Unit = {
-    val f =FileUtils.blobFile(bid, _blobDir)
+  override def delete(bid: BlobId): Unit = {
+    val f = FileUtils.blobFile(bid, _blobDir)
     if (f.exists()) f.delete()
   }
 
@@ -164,7 +174,7 @@ class FileStorage extends Storage with Bufferable {
 
   override def loadBlobBatch(bids: Iterable[BlobId]): Iterable[Blob] = {
     bids.map { bid =>
-      FileUtils.readFromBlobFile(FileUtils.blobFile(bid , _blobDir), _blobIdFac)._2
+      FileUtils.readFromBlobFile(FileUtils.blobFile(bid, _blobDir), _blobIdFac)._2
     }
   }
 

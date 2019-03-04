@@ -34,7 +34,7 @@ object WebUtils {
     }catch {
       case e:HttpHostConnectException =>
         throw new AipmServiceException(s"Failed connect to ${e.getHost} ")
-      case e => throw new AipmServiceException(e.getMessage)
+      case e:Throwable => throw new AipmServiceException(e.getMessage)
     }
 
     resStr
@@ -76,7 +76,7 @@ object WebUtils {
     } catch {
       case e:HttpHostConnectException =>
         throw new AipmServiceException(s"Failed connect to ${e.getHost} ")
-      case e => throw new AipmServiceException(e.getMessage)
+      case e:Throwable => throw new AipmServiceException(e.getMessage)
     }
     resStr
   }

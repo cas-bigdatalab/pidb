@@ -6,6 +6,7 @@ import javax.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
 import cn.pidb.blob._
 import cn.pidb.blob.storage.BlobStorage
 import cn.pidb.engine.blob._
+import cn.pidb.engine.blob.extensions.RuntimeContextHolder
 import cn.pidb.engine.cypherplus.{CustomPropertyProvider, CypherPluginRegistry, ValueMatcher}
 import cn.pidb.util.ConfigEx._
 import cn.pidb.util.StreamUtils._
@@ -22,7 +23,8 @@ import scala.collection.mutable
 /**
   * Created by bluejoe on 2018/11/29.
   */
-class BlobPropertyStoreService(storeDir: File, conf: org.neo4j.kernel.configuration.Config, proceduresService: Procedures) extends Lifecycle with Logging {
+class BlobPropertyStoreService(storeDir: File, conf: org.neo4j.kernel.configuration.Config, proceduresService: Procedures)
+  extends Lifecycle with Logging {
 
   val config = new Config() {
     override def getRaw(name: String): Option[String] = {
@@ -61,7 +63,7 @@ class BlobPropertyStoreService(storeDir: File, conf: org.neo4j.kernel.configurat
         }
 
       logger.info(s"loading plugins: $path");
-      val appctx = new FileSystemXmlApplicationContext("file://" + path);
+      val appctx = new FileSystemXmlApplicationContext("file:" + path);
       appctx.getBean[CypherPluginRegistry](classOf[CypherPluginRegistry]);
     }).getOrElse(new CypherPluginRegistry());
 
@@ -111,30 +113,34 @@ class BlobPropertyStoreService(storeDir: File, conf: org.neo4j.kernel.configurat
     var _blobDir: File = _;
     var _blobIdFactory: BlobIdFactory = _;
 
-    override def save(bid: BlobId, blob: Blob) = {
-      val file = blobFile(bid);
-      file.getParentFile.mkdirs();
+    def saveBatch(blobs: Iterable[(BlobId, Blob)]) = {
+      blobs.foreach(x => {
+        val (bid, blob) = x;
+        val file = fileOfBlob(bid);
+        file.getParentFile.mkdirs();
 
-      val fos = new FileOutputStream(file);
-      fos.write(bid.asByteArray());
-      fos.writeLong(blob.mimeType.code);
-      fos.writeLong(blob.length);
+        val fos = new FileOutputStream(file);
+        fos.write(bid.asByteArray());
+        fos.writeLong(blob.mimeType.code);
+        fos.writeLong(blob.length);
 
-      blob.offerStream { bis =>
-        IOUtils.copy(bis, fos);
+        blob.offerStream { bis =>
+          IOUtils.copy(bis, fos);
+        }
+        fos.close();
       }
-      fos.close();
+      )
     }
 
-    override def load(bid: BlobId): InputStreamSource = {
-      readFromBlobFile(blobFile(bid))._2.streamSource
+    def loadBatch(ids: Iterable[BlobId]): Iterable[InputStreamSource] = {
+      ids.map(id => readFromBlobFile(fileOfBlob(id))._2.streamSource);
     }
 
-    override def delete(bid: BlobId) = {
-      blobFile(bid).delete()
+    def deleteBatch(ids: Iterable[BlobId]) = {
+      ids.foreach(id => fileOfBlob(id).delete());
     }
 
-    private def blobFile(bid: BlobId): File = {
+    private def fileOfBlob(bid: BlobId): File = {
       val idname = bid.asLiteralString();
       new File(_blobDir, s"${idname.substring(32, 36)}/$idname");
     }

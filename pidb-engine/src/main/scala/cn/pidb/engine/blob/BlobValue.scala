@@ -66,7 +66,7 @@ class BlobArray(val blobs: Array[Blob]) extends AbstractBlobArray(blobs) {
   override def map[T](mapper: ValueMapper[T]): T = this.blobs.asInstanceOf[T];
 
   override def equals(other: Value): Boolean = {
-    other.isInstanceOf[Array[Blob]] &&
+    other.isInstanceOf[BlobArray] &&
       other.asInstanceOf[BlobArray].blobs.zip(blobs).map(t => t._1 == t._2).reduce(_ && _)
   }
 }

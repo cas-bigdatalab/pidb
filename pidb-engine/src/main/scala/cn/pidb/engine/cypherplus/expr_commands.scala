@@ -19,7 +19,8 @@
  */
 package cn.pidb.engine.cypherplus
 
-import cn.pidb.engine.{BlobPropertyStoreService, RuntimeContextHolder}
+import cn.pidb.engine.BlobPropertyStoreService
+import cn.pidb.engine.blob.extensions.RuntimeContextHolder
 import cn.pidb.util.ReflectUtils._
 import org.neo4j.cypher.internal.runtime.interpreted.commands.expressions._
 import org.neo4j.cypher.internal.runtime.interpreted.commands.predicates.Predicate
@@ -29,6 +30,17 @@ import org.neo4j.cypher.internal.runtime.interpreted.{ExecutionContext, UpdateCo
 import org.neo4j.values.AnyValue
 import org.neo4j.values.storable._
 import org.neo4j.values.virtual.VirtualValues
+
+object QueryStateUtils {
+  def getBlobPropertyStoreService(state: QueryState): BlobPropertyStoreService = {
+    {
+      if (state.query.isInstanceOf[UpdateCountingQueryContext])
+        state._get("query.inner.inner.transactionalContext.tc.graph.graph.config")
+      else
+        state._get("query.inner.transactionalContext.tc.graph.graph.config")
+    }.asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]();
+  }
+}
 
 case class BlobLiteralCommand(url: BlobURL) extends Expression {
   def apply(ctx: ExecutionContext, state: QueryState): AnyValue = {
@@ -50,8 +62,8 @@ case class CustomPropertyCommand(mapExpr: Expression, propertyKey: KeyToken)
       case n if n == Values.NO_VALUE => Values.NO_VALUE
 
       case x: Value =>
-        val pv = state._get("query.inner.transactionalContext.tc.graph.graph.config").asInstanceOf[RuntimeContextHolder]
-          .getRuntimeContext[BlobPropertyStoreService].getCustomPropertyProvider
+        val pv = QueryStateUtils.getBlobPropertyStoreService(state)
+          .getCustomPropertyProvider
           .getCustomProperty(x.asObject, propertyKey.name)
 
         pv.map(Values.unsafeOf(_, true)).getOrElse(Values.NO_VALUE)
@@ -85,12 +97,7 @@ trait SemanticOperatorSupport {
   def execute[T](m: ExecutionContext, state: QueryState)(f: (AnyValue, AnyValue, BlobPropertyStoreService) => T): T = {
     val lValue = lhsExpr(m, state)
     val rValue = rhsExpr(m, state)
-    f(lValue, rValue, {
-      if (state.query.isInstanceOf[UpdateCountingQueryContext])
-        state._get("query.inner.inner.transactionalContext.tc.graph.graph.config")
-      else
-        state._get("query.inner.transactionalContext.tc.graph.graph.config")
-    }.asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]());
+    f(lValue, rValue, QueryStateUtils.getBlobPropertyStoreService(state))
   }
 
   override def toString: String = lhsExpr.toString() + this.getOperatorString + rhsExpr.toString()

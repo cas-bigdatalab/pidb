@@ -31,16 +31,16 @@ class Neo2JavaValueMapper(typeMappers: TypeMappers) {
     */
   def scala2JavaValue(x: Any): Any = {
     x match {
-      case m: Map[String, Any]
+      case m: Map[_, _]
       =>
         val jm = new java.util.HashMap[String, Any]();
-        m.map((kv) => (kv._1, scala2JavaValue(kv._2))).foreach((kv) => jm.put(kv._1, kv._2));
+        m.asInstanceOf[Map[String, Any]].map((kv) => (kv._1, scala2JavaValue(kv._2))).foreach((kv) => jm.put(kv._1, kv._2));
         jm
 
-      case l: Iterable[Any]
+      case l: Iterable[_]
       => l.map((v) => scala2JavaValue(v)).toArray
 
-      case a: Array[Any]
+      case a: Array[_]
       => a.map((v) => scala2JavaValue(v))
 
       case _ => x

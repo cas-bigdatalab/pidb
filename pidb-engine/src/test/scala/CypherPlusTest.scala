@@ -43,7 +43,7 @@ class CypherPlusTest {
       Assert.assertTrue(false);
     }
     catch {
-      case _ => Assert.assertTrue(true);
+      case _:Throwable => Assert.assertTrue(true);
     }
 
     Assert.assertEquals(true, db.execute("return Blob.fromFile('/Users/bluejoe/Pictures/meng.jpg') %% Blob.fromFile('/Users/bluejoe/Pictures/event.jpg') as r").next().get("r").asInstanceOf[Double] > 0.7);
@@ -77,7 +77,7 @@ class CypherPlusTest {
       Assert.assertTrue(false);
     }
     catch {
-      case _ => Assert.assertTrue(true);
+      case _:Throwable => Assert.assertTrue(true);
     }
 
     Assert.assertEquals(1, db.execute("""return "helloworld"->test1 as x""")

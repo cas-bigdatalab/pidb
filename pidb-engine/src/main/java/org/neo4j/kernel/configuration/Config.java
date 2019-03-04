@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import cn.pidb.engine.RuntimeContextHolder;
+import cn.pidb.engine.blob.extensions.RuntimeContextHolder;
 import org.neo4j.configuration.ConfigOptions;
 import org.neo4j.configuration.ConfigValue;
 import org.neo4j.configuration.LoadableConfig;

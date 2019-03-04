@@ -5,7 +5,8 @@ import java.util.UUID
 
 import cn.pidb.blob._
 import cn.pidb.blob.storage.BlobStorage
-import cn.pidb.engine.{BlobCacheInSession, ThreadVars, BlobPropertyStoreService, RuntimeContextHolder}
+import cn.pidb.engine.blob.extensions.{RuntimeContextHolder, TransactionRecordStateAware, TransactionRecordStateExtension, TransactionalDynamicRecordAllocator}
+import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService, ThreadVars}
 import cn.pidb.util.ReflectUtils._
 import cn.pidb.util.StreamUtils._
 import cn.pidb.util.{Logging, StreamUtils}
@@ -93,9 +94,8 @@ object BlobIO extends Logging {
       baos.writeLong(x);
     };
 
-    val conf = recordAllocator._get("idGenerator.source.configuration").asInstanceOf[Config];
-    val storage: BlobStorage = conf.asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]().getBlobStorage;
-    storage.save(blobId, blob)
+    val storage: BlobStorage = recordAllocator.asInstanceOf[TransactionalDynamicRecordAllocator].blobStorage;
+    storage.saveBatch(Array(blobId -> blob))
 
     baos.toByteArray;
   }
@@ -289,9 +289,12 @@ object BlobIO extends Logging {
   private def _writeBlobIntoStorage(value: BlobHolder, blobId: BlobId, valueWriter: ValueWriter[_]) = {
     _writeBlobValue(value, blobId, valueWriter) {
       val blob: Blob = value.blob;
+      valueWriter._get("stringAllocator").asInstanceOf[TransactionRecordStateAware].recordState.asInstanceOf[TransactionRecordStateExtension].addBlob(blobId, blob);
+      /*
       val conf = valueWriter._get("stringAllocator.idGenerator.source.configuration").asInstanceOf[Config];
       val storage: BlobStorage = conf.asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]().getBlobStorage;
       storage.save(blobId, blob)
+      */
     };
   }
 
@@ -312,7 +315,7 @@ object BlobIO extends Logging {
   def _readBlobValue(values: Array[Long], conf: Config): BlobValue = {
     val (bid, length, mt) = _unpackBlobValue(values);
     val storage: BlobStorage = conf.asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]().getBlobStorage;
-    val iss = storage.load(bid);
+    val iss = storage.loadBatch(Array(bid)).head;
     val blob = Blob.fromInputStreamSource(iss, length, Some(mt));
     new BlobValue(Blob.withStoreId(blob, bid));
   }
