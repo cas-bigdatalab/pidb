@@ -15,7 +15,8 @@ class Services(private val _aipmHttpHostUrl:String) {
     "PlateNumber"-> "service/plate/",
     "ClassifyAnimal"-> "service/classify/dogorcat/",
     "MandarinASR"-> "service/asr/",
-    "ClassifySentiment" -> "service/sentiment/classifier"
+    "ClassifySentiment" -> "service/sentiment/classifier",
+    "TextSegment" -> "service/text/segment/"
   )
   def getServiceUrl(name:String):String = {
     if (_aipmHttpHostUrl.endsWith("/")){
@@ -40,24 +41,6 @@ class Services(private val _aipmHttpHostUrl:String) {
     }
     else{
       null
-    }
-
-  }
-
-
-  def isFaceInPhoto(faceImgInputStream:InputStream,photoImgInputStream:InputStream): Boolean={
-    val serviceUrl = getServiceUrl("FaceInPhoto")
-
-    val contents = Map("image1" -> faceImgInputStream, "image2" -> photoImgInputStream)
-
-    val res = WebUtils.doPost(serviceUrl,inStreamContents = contents)
-    val json:Option[Any] = JSON.parseFull(res)
-    val map:Map[String,Any] = json.get.asInstanceOf[Map[String, Any]]
-    if(map("res").asInstanceOf[Boolean]){
-      map("value").asInstanceOf[Boolean]
-    }
-    else{
-      false
     }
 
   }
@@ -124,6 +107,23 @@ class Services(private val _aipmHttpHostUrl:String) {
     }
     else {
       ""
+    }
+  }
+
+
+  def segmentText(text:String): List[String] = {
+    val serviceUrl = getServiceUrl("TextSegment")
+    val contents = Map("text" -> text)
+
+    val res = WebUtils.doPost(serviceUrl, strContents = contents)
+    val json: Option[Any] = JSON.parseFull(res)
+    val map: Map[String, Any] = json.get.asInstanceOf[Map[String, Any]]
+
+    if (map("res").asInstanceOf[Boolean]) {
+      map("value").asInstanceOf[List[String]]
+    }
+    else {
+      Nil
     }
   }
 
