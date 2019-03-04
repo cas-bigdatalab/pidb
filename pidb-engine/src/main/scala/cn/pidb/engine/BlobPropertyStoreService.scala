@@ -7,16 +7,26 @@ import javax.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
 import cn.pidb.blob._
 import cn.pidb.blob.storage.{BlobStorage, RollbackCommand}
 import cn.pidb.engine.blob._
-import cn.pidb.engine.blob.extensions.GraphServiceContext
+import cn.pidb.engine.blob.extensions.{GraphServiceContext, TransactionRecordStateAware}
 import cn.pidb.engine.cypherplus.{CustomPropertyProvider, CypherPluginRegistry, ValueMatcher}
 import cn.pidb.util.ConfigurationEx._
+import cn.pidb.util.ReflectUtils._
 import cn.pidb.util.StreamUtils._
 import cn.pidb.util.{Configuration, Logging, Neo2JavaValueMapper, StreamUtils}
 import org.apache.commons.io.IOUtils
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.servlet.{ServletContextHandler, ServletHolder}
+import org.neo4j.bolt.v1.messaging.Neo4jPack
+import org.neo4j.cypher.internal.runtime.interpreted.UpdateCountingQueryContext
+import org.neo4j.cypher.internal.runtime.interpreted.pipes.QueryState
+import org.neo4j.driver.internal.packstream.PackStream
+import org.neo4j.kernel.configuration.Config
+import org.neo4j.kernel.impl.newapi.DefaultPropertyCursor
 import org.neo4j.kernel.impl.proc.{Procedures, TypeMappers}
+import org.neo4j.kernel.impl.store.record.{PrimitiveRecord, PropertyRecord}
+import org.neo4j.kernel.impl.transaction.state.RecordAccess
 import org.neo4j.kernel.lifecycle.Lifecycle
+import org.neo4j.values.storable.ValueWriter
 import org.springframework.context.support.FileSystemXmlApplicationContext
 
 import scala.collection.mutable
@@ -34,7 +44,41 @@ trait BlobPropertyStoreService {
   val blobIO: BlobIO;
 }
 
-class BlobPropertyStoreServiceImpl(storeDir: File, conf: org.neo4j.kernel.configuration.Config, proceduresService: Procedures)
+object BlobPropertyStoreService {
+  def of(config: Config): BlobPropertyStoreService =
+    config.asInstanceOf[GraphServiceContext].getBlobPropertyStoreService;
+
+  def of(state: QueryState): BlobPropertyStoreService = of({
+    if (state.query.isInstanceOf[UpdateCountingQueryContext])
+      state._get("query.inner.inner.transactionalContext.tc.graph.graph.config")
+    else
+      state._get("query.inner.transactionalContext.tc.graph.graph.config")
+  }.asInstanceOf[Config])
+
+  def of(cursor: DefaultPropertyCursor): BlobPropertyStoreService =
+    of(cursor._get("read.properties.configuration").asInstanceOf[Config]);
+
+  def of(trsa: TransactionRecordStateAware): BlobPropertyStoreService =
+    trsa.blobPropertyStoreService;
+
+  def of(propertyRecords: RecordAccess[PropertyRecord, PrimitiveRecord]): BlobPropertyStoreService =
+    of(propertyRecords._get("loader.val$store.configuration").asInstanceOf[Config]);
+
+  def of(valueWriter: ValueWriter[_]): BlobPropertyStoreService =
+    of(valueWriter._get("stringAllocator").asInstanceOf[TransactionRecordStateAware]);
+
+  private def getFromCurrentThread(): BlobPropertyStoreService = of(ThreadVars.get[Config]("config"))
+
+  def of(unpacker: Neo4jPack.Unpacker): BlobPropertyStoreService = getFromCurrentThread
+
+  def of(packer: Neo4jPack.Packer): BlobPropertyStoreService = getFromCurrentThread
+
+  def of(unpacker: PackStream.Unpacker): BlobPropertyStoreService = getFromCurrentThread
+
+  def of(packer: PackStream.Packer): BlobPropertyStoreService = getFromCurrentThread
+}
+
+class BlobPropertyStoreServiceImpl(storeDir: File, conf: Config, proceduresService: Procedures)
   extends Lifecycle with BlobPropertyStoreService with Logging {
   override val blobIO: BlobIO = new BlobIO(this);
   override val graphServiceContext: GraphServiceContext = conf.asInstanceOf[GraphServiceContext];
@@ -87,7 +131,7 @@ class BlobPropertyStoreServiceImpl(storeDir: File, conf: org.neo4j.kernel.config
 
   val blobStorage: BlobStorage = configuration.getRaw("blob.storage")
     .map(Class.forName(_).newInstance().asInstanceOf[BlobStorage])
-    .getOrElse(DEFAULT_BLOB_STORAGE);
+    .getOrElse(createDefaultBlobStorage);
 
   val _mapper = new Neo2JavaValueMapper(proceduresService.valueMapper().asInstanceOf[TypeMappers]);
   var _blobServer: HttpBlobServer = _;
@@ -151,7 +195,7 @@ class BlobPropertyStoreServiceImpl(storeDir: File, conf: org.neo4j.kernel.config
     }
   }
 
-  val DEFAULT_BLOB_STORAGE = new BlobStorage with Logging {
+  private def createDefaultBlobStorage() = new BlobStorage with Logging {
     var _blobDir: File = _;
 
     def saveBatch(blobs: Iterable[(BlobId, Blob)]) = {

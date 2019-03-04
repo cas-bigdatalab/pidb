@@ -1,6 +1,6 @@
 package cn.pidb.engine.blob.extensions
 
-import cn.pidb.engine.BlobPropertyStoreService
+import cn.pidb.engine.{BlobPropertyStoreService}
 
 import scala.collection.mutable.{Map => MMap}
 

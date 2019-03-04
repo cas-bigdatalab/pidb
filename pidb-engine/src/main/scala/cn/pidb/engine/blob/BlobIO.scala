@@ -4,21 +4,17 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import cn.pidb.blob._
 import cn.pidb.engine.blob.extensions.{TransactionRecordStateAware, TransactionRecordStateExtension}
-import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService, ThreadVars}
+import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService}
 import cn.pidb.util.ReflectUtils._
 import cn.pidb.util.StreamUtils._
 import cn.pidb.util.{Logging, StreamUtils}
-import org.neo4j.bolt.v1.messaging.Neo4jPack
 import org.neo4j.driver.internal.packstream.PackStream
 import org.neo4j.driver.internal.types.{TypeConstructor, TypeRepresentation}
 import org.neo4j.driver.internal.value.ValueAdapter
 import org.neo4j.driver.v1.Value
 import org.neo4j.driver.v1.types.Type
-import org.neo4j.kernel.configuration.Config
-import org.neo4j.kernel.impl.newapi.DefaultPropertyCursor
 import org.neo4j.kernel.impl.store.PropertyType
-import org.neo4j.kernel.impl.store.record.{PrimitiveRecord, PropertyBlock, PropertyRecord}
-import org.neo4j.kernel.impl.transaction.state.RecordAccess
+import org.neo4j.kernel.impl.store.record.PropertyBlock
 import org.neo4j.kernel.impl.transaction.state.RecordAccess.RecordProxy
 import org.neo4j.values.AnyValue
 import org.neo4j.values.storable._
@@ -26,35 +22,6 @@ import org.neo4j.values.storable._
 /**
   * Created by bluejoe on 2018/7/4.
   */
-object BlobIO {
-  def of(bpss: BlobPropertyStoreService): BlobIO = bpss.blobIO;
-
-  def of(cursor: DefaultPropertyCursor): BlobIO =
-    of(cursor._get("read.properties.configuration").asInstanceOf[Config]);
-
-  def of(trsa: TransactionRecordStateAware): BlobIO =
-    of(trsa.blobPropertyStoreService);
-
-  def of(config: Config): BlobIO =
-    of(config.getBlobPropertyStoreService);
-
-  def of(propertyRecords: RecordAccess[PropertyRecord, PrimitiveRecord]): BlobIO =
-    of(propertyRecords._get("loader.val$store.configuration").asInstanceOf[Config]);
-
-  def of(valueWriter: ValueWriter[_]): BlobIO =
-    of(valueWriter._get("stringAllocator").asInstanceOf[TransactionRecordStateAware]);
-
-  private def getFromCurrentThread(): BlobIO = of(ThreadVars.get[Config]("config"))
-
-  def of(unpacker: Neo4jPack.Unpacker): BlobIO = getFromCurrentThread
-
-  def of(packer: Neo4jPack.Packer): BlobIO = getFromCurrentThread
-
-  def of(unpacker: PackStream.Unpacker): BlobIO = getFromCurrentThread
-
-  def of(packer: PackStream.Packer): BlobIO = getFromCurrentThread
-}
-
 class BlobIO(bpss: BlobPropertyStoreService) extends Logging {
   val BOLT_VALUE_TYPE_BLOB_INLINE = PackStream.RESERVED_C5;
   val BOLT_VALUE_TYPE_BLOB_REMOTE = PackStream.RESERVED_C4;

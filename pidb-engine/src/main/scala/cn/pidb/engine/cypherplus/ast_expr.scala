@@ -3,7 +3,7 @@ package cn.pidb.engine.cypherplus
 import java.io.File
 
 import cn.pidb.blob.Blob
-import cn.pidb.engine.BlobPropertyStoreService
+import cn.pidb.engine.BlobStoreService$
 import org.apache.commons.codec.binary.Base64
 import org.neo4j.cypher.internal.util.v3_4.InputPosition
 import org.neo4j.cypher.internal.util.v3_4.symbols._

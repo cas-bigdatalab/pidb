@@ -1,6 +1,6 @@
 package cn.pidb.engine.blob.extensions
 
-import cn.pidb.engine.BlobPropertyStoreService
+import cn.pidb.engine.{BlobPropertyStoreService}
 import cn.pidb.util.ReflectUtils._
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.store.DynamicRecordAllocator
@@ -34,5 +34,5 @@ trait TransactionRecordStateAware {
 
   lazy val config = recordState._get("neoStores.config").asInstanceOf[Config]
 
-  lazy val blobPropertyStoreService: BlobPropertyStoreService = config.asInstanceOf[GraphServiceContext].contextGet[BlobPropertyStoreService];
+  lazy val blobPropertyStoreService: BlobPropertyStoreService = config.asInstanceOf[GraphServiceContext].getBlobPropertyStoreService;
 }
