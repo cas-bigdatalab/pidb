@@ -3,7 +3,7 @@ package cn.aipm.image
 import javax.imageio.ImageIO
 
 import cn.pidb.blob.{ Blob, PropertyExtractor}
-import cn.pidb.util.Config
+import cn.pidb.util.Configuration
 
 /**
   * Created by bluejoe on 2019/2/17.
@@ -16,7 +16,7 @@ class ImageMetaDataExtractor extends PropertyExtractor {
     Map("height" -> srcImage.getHeight(), "width" -> srcImage.getWidth());
   })
 
-  override def initialize(conf: Config): Unit = {
+  override def initialize(conf: Configuration): Unit = {
 
   }
 }

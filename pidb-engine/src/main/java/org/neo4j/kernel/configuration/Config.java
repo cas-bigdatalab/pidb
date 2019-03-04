@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import cn.pidb.engine.blob.extensions.RuntimeContextHolder;
+import cn.pidb.engine.blob.extensions.GraphServiceContext;
 import org.neo4j.configuration.ConfigOptions;
 import org.neo4j.configuration.ConfigValue;
 import org.neo4j.configuration.LoadableConfig;
@@ -77,7 +77,7 @@ import static org.neo4j.kernel.configuration.Settings.TRUE;
  * applied.
  */
 ////NOTE: added by pidb, extends RuntimeContext
-public class Config extends RuntimeContextHolder implements DiagnosticsProvider, Configuration
+public class Config extends GraphServiceContext implements DiagnosticsProvider, Configuration
 {
     public static final String DEFAULT_CONFIG_FILE_NAME = "neo4j.conf";
 

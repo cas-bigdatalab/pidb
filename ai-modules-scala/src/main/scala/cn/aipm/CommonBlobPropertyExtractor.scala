@@ -1,7 +1,7 @@
 package cn.aipm
 
 import cn.pidb.blob.{Blob, PropertyExtractor}
-import cn.pidb.util.Config
+import cn.pidb.util.Configuration
 
 /**
   * Created by bluejoe on 2019/2/17.
@@ -13,7 +13,7 @@ class CommonPropertyExtractor extends PropertyExtractor {
     Map("class" -> x.getClass.getName)
   }
 
-  override def initialize(conf: Config) {
+  override def initialize(conf: Configuration) {
   }
 }
 
@@ -26,6 +26,6 @@ class CommonBlobPropertyExtractor extends PropertyExtractor {
     }
   }
 
-  override def initialize(conf: Config) {
+  override def initialize(conf: Configuration) {
   }
 }

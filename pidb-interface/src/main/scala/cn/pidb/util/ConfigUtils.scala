@@ -2,14 +2,14 @@ package cn.pidb.util
 
 import java.io.File
 
-trait Config {
+trait Configuration {
   def getRaw(name: String): Option[String];
 }
 
 /**
   * Created by bluejoe on 2018/11/3.
   */
-class ConfigEx(conf: Config) extends Logging {
+class ConfigurationEx(conf: Configuration) extends Logging {
   def getRequiredValueAsString(key: String): String = {
     getRequiredValue(key, (x) => x);
   }
@@ -68,8 +68,8 @@ class ConfigEx(conf: Config) extends Logging {
   }
 }
 
-object ConfigEx {
-  implicit def config2Ex(conf: Config) = new ConfigEx(conf);
+object ConfigurationEx {
+  implicit def config2Ex(conf: Configuration) = new ConfigurationEx(conf);
 }
 
 class ArgumentRequiredException(key: String) extends

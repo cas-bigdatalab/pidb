@@ -3,7 +3,7 @@ package test
 import javax.imageio.ImageIO
 
 import cn.pidb.blob._
-import cn.pidb.util.Config
+import cn.pidb.util.Configuration
 
 /**
   * Created by bluejoe on 2019/1/28.
@@ -13,7 +13,7 @@ class TestAnyPropertyExtractor extends PropertyExtractor {
 
   override def extract(x: Any): Map[String, Any] = Map("test1" -> 1, "test2" -> "hello")
 
-  override def initialize(conf: Config): Unit = {}
+  override def initialize(conf: Configuration): Unit = {}
 }
 
 class TestImagePlateNumberExtractor extends PropertyExtractor {
@@ -24,7 +24,7 @@ class TestImagePlateNumberExtractor extends PropertyExtractor {
     Map("plateNumber" -> "京NB6666");
   })
 
-  override def initialize(conf: Config): Unit = {}
+  override def initialize(conf: Configuration): Unit = {}
 }
 
 class TestImageSimilarityComparator extends ValueComparator {
@@ -32,7 +32,7 @@ class TestImageSimilarityComparator extends ValueComparator {
     0.9
   }
 
-  override def initialize(conf: Config): Unit = {}
+  override def initialize(conf: Configuration): Unit = {}
 }
 
 class TestImagePlateNumberComparator extends ValueComparator {
@@ -43,7 +43,7 @@ class TestImagePlateNumberComparator extends ValueComparator {
       0.0
   }
 
-  override def initialize(conf: Config): Unit = {}
+  override def initialize(conf: Configuration): Unit = {}
 }
 
 class TestString2StringComparator extends ValueComparator {
@@ -54,7 +54,7 @@ class TestString2StringComparator extends ValueComparator {
       0.0
   }
 
-  override def initialize(conf: Config): Unit = {}
+  override def initialize(conf: Configuration): Unit = {}
 }
 
 class TestAudioTextComparator extends ValueComparator {
@@ -62,5 +62,5 @@ class TestAudioTextComparator extends ValueComparator {
     0.9
   }
 
-  override def initialize(conf: Config): Unit = {}
+  override def initialize(conf: Configuration): Unit = {}
 }

@@ -71,7 +71,7 @@ public class PropertyUtil
                     int byteLength = buffer.getInt();
                     byte[] blobByteArray = new byte[byteLength];
                     buffer.get( blobByteArray );
-                    result[i] = BlobIO.decodeBlob( blobByteArray, conf );;
+                    result[i] = BlobIO.of(conf).decodeBlob( blobByteArray );;
                     //buffer.position( buffer.position() + byteLength );
                 }
                 return Values.blobArray( result );

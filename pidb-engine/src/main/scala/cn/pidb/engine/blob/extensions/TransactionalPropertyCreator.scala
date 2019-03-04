@@ -34,5 +34,5 @@ trait TransactionRecordStateAware {
 
   lazy val config = recordState._get("neoStores.config").asInstanceOf[Config]
 
-  lazy val blobStorage = config.asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]().getBlobStorage;
+  lazy val blobPropertyStoreService: BlobPropertyStoreService = config.asInstanceOf[GraphServiceContext].contextGet[BlobPropertyStoreService];
 }

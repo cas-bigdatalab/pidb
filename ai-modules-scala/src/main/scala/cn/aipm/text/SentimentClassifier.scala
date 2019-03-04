@@ -2,8 +2,8 @@ package cn.aipm.text
 
 import cn.pidb.blob.PropertyExtractor
 import cn.aipm.service.Services
-import cn.pidb.util.Config
-import cn.pidb.util.ConfigEx._
+import cn.pidb.util.Configuration
+import cn.pidb.util.ConfigurationEx._
 
 class SentimentClassifier extends PropertyExtractor {
 
@@ -16,7 +16,7 @@ class SentimentClassifier extends PropertyExtractor {
     Map("sentiment" -> sentiment)
   }
 
-  override def initialize(conf: Config): Unit = {
+  override def initialize(conf: Configuration): Unit = {
     aipmHttpHostUrl = conf.getRequiredValueAsString("aipm.http.host.url")
   }
 

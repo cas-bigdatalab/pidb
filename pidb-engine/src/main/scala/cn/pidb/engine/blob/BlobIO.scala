@@ -1,15 +1,14 @@
 package cn.pidb.engine.blob
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream}
-import java.util.UUID
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 
 import cn.pidb.blob._
-import cn.pidb.blob.storage.BlobStorage
-import cn.pidb.engine.blob.extensions.{RuntimeContextHolder, TransactionRecordStateAware, TransactionRecordStateExtension, TransactionalDynamicRecordAllocator}
+import cn.pidb.engine.blob.extensions.{TransactionRecordStateAware, TransactionRecordStateExtension}
 import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService, ThreadVars}
 import cn.pidb.util.ReflectUtils._
 import cn.pidb.util.StreamUtils._
 import cn.pidb.util.{Logging, StreamUtils}
+import org.neo4j.bolt.v1.messaging.Neo4jPack
 import org.neo4j.driver.internal.packstream.PackStream
 import org.neo4j.driver.internal.types.{TypeConstructor, TypeRepresentation}
 import org.neo4j.driver.internal.value.ValueAdapter
@@ -17,8 +16,8 @@ import org.neo4j.driver.v1.Value
 import org.neo4j.driver.v1.types.Type
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.newapi.DefaultPropertyCursor
+import org.neo4j.kernel.impl.store.PropertyType
 import org.neo4j.kernel.impl.store.record.{PrimitiveRecord, PropertyBlock, PropertyRecord}
-import org.neo4j.kernel.impl.store.{DynamicRecordAllocator, PropertyStore, PropertyType}
 import org.neo4j.kernel.impl.transaction.state.RecordAccess
 import org.neo4j.kernel.impl.transaction.state.RecordAccess.RecordProxy
 import org.neo4j.values.AnyValue
@@ -27,48 +26,45 @@ import org.neo4j.values.storable._
 /**
   * Created by bluejoe on 2018/7/4.
   */
-object BlobIO extends Logging {
+object BlobIO {
+  def of(bpss: BlobPropertyStoreService): BlobIO = bpss.blobIO;
+
+  def of(cursor: DefaultPropertyCursor): BlobIO =
+    of(cursor._get("read.properties.configuration").asInstanceOf[Config]);
+
+  def of(trsa: TransactionRecordStateAware): BlobIO =
+    of(trsa.blobPropertyStoreService);
+
+  def of(config: Config): BlobIO =
+    of(config.getBlobPropertyStoreService);
+
+  def of(propertyRecords: RecordAccess[PropertyRecord, PrimitiveRecord]): BlobIO =
+    of(propertyRecords._get("loader.val$store.configuration").asInstanceOf[Config]);
+
+  def of(valueWriter: ValueWriter[_]): BlobIO =
+    of(valueWriter._get("stringAllocator").asInstanceOf[TransactionRecordStateAware]);
+
+  private def getFromCurrentThread(): BlobIO = of(ThreadVars.get[Config]("config"))
+
+  def of(unpacker: Neo4jPack.Unpacker): BlobIO = getFromCurrentThread
+
+  def of(packer: Neo4jPack.Packer): BlobIO = getFromCurrentThread
+
+  def of(unpacker: PackStream.Unpacker): BlobIO = getFromCurrentThread
+
+  def of(packer: PackStream.Packer): BlobIO = getFromCurrentThread
+}
+
+class BlobIO(bpss: BlobPropertyStoreService) extends Logging {
   val BOLT_VALUE_TYPE_BLOB_INLINE = PackStream.RESERVED_C5;
   val BOLT_VALUE_TYPE_BLOB_REMOTE = PackStream.RESERVED_C4;
   val MAX_INLINE_BLOB_BYTES = 10240;
 
-  val blobIdFactory = new BlobIdFactory {
-    private def fromUUID(uuid: UUID): BlobId = new BlobId() {
-      def asLongArray(): Array[Long] = {
-        Array[Long](uuid.getMostSignificantBits, uuid.getLeastSignificantBits);
-      }
-
-      def asByteArray(): Array[Byte] = {
-        StreamUtils.convertLongArray2ByteArray(asLongArray());
-      }
-
-      override def asLiteralString(): String = {
-        uuid.toString;
-      }
-    }
-
-    def fromLongArray(mostSigBits: Long, leastSigBits: Long) = fromUUID(new UUID(mostSigBits, leastSigBits));
-
-    override def create(): BlobId = fromUUID(UUID.randomUUID());
-
-    override def fromBytes(bytes: Array[Byte]): BlobId = {
-      val is = new ByteArrayInputStream(bytes);
-      fromLongArray(is.readLong(), is.readLong());
-    }
-
-    override def readFromStream(is: InputStream): BlobId = {
-      fromBytes(is.readBytes(16))
-    }
-
-    override def fromLiteralString(bid: String): BlobId = {
-      fromUUID(UUID.fromString(bid));
-    }
-  }
   //10k
 
   def writeBlobValue(value: BlobHolder, valueWriter: ValueWriter[_]) = {
-    //create blodid
-    val blobId = blobIdFactory.create();
+    //create blobid
+    val blobId = bpss.blobIdFactory.create();
 
     if (valueWriter.getClass.getName.endsWith("PropertyBlockValueWriter")) {
       _writeBlobIntoStorage(value, blobId, valueWriter);
@@ -79,24 +75,22 @@ object BlobIO extends Logging {
     }
   }
 
-  def decodeBlob(bytes: Array[Byte], conf: Config): Blob = {
+  def decodeBlob(bytes: Array[Byte]): Blob = {
     val baos = new ByteArrayOutputStream();
     baos.write(bytes);
     val bais = new ByteArrayInputStream(baos.toByteArray);
     val longs = (0 to 3).map(x => bais.readLong()).toArray;
-    _readBlobValue(longs, conf).blob;
+    _readBlobValue(longs).blob;
   }
 
-  def encodeBlob(blob: Blob, recordAllocator: DynamicRecordAllocator): Array[Byte] = {
+  def encodeBlob(blob: Blob): Array[Byte] = {
     val baos = new ByteArrayOutputStream();
-    val blobId = blobIdFactory.create();
+    val blobId = bpss.blobIdFactory.create();
     _wrapBlobValueAsLongArray(new BlobValue(blob), blobId, 0).foreach { x =>
       baos.writeLong(x);
     };
 
-    val storage: BlobStorage = recordAllocator.asInstanceOf[TransactionalDynamicRecordAllocator].blobStorage;
-    storage.saveBatch(Array(blobId -> blob))
-
+    bpss.blobStorage.saveBatch(Array(blobId -> blob))
     baos.toByteArray;
   }
 
@@ -115,7 +109,7 @@ object BlobIO extends Logging {
 
   private def _writeBlobValueIntoBoltStream(value: BlobHolder, out: PackOutputInterface, useInlineAlways: Boolean) = {
     //create blodid
-    val blobId = blobIdFactory.create();
+    val blobId = bpss.blobIdFactory.create();
     val inline = useInlineAlways || (value.blob.length <= MAX_INLINE_BLOB_BYTES);
     //write marker
     out.writeByte(if (inline) {
@@ -134,8 +128,8 @@ object BlobIO extends Logging {
     }
     else {
       //write as a HTTP resource
-      val config: Config = ThreadVars.get[Config]("config");
-      val httpConnectorUrl: String = config.asInstanceOf[RuntimeContextHolder].getRuntimeContext("blob.server.connector.url").asInstanceOf[String];
+      //val config: Config = ThreadVars.get[Config]("config");
+      val httpConnectorUrl: String = bpss.graphServiceContext.contextGet("blob.server.connector.url").asInstanceOf[String];
       //http://localhost:1224/blob
       val bs = httpConnectorUrl.getBytes("utf-8");
       out.writeInt(bs.length);
@@ -298,8 +292,8 @@ object BlobIO extends Logging {
     };
   }
 
-  def readBlobValue(values: Array[Long], cursor: DefaultPropertyCursor): BlobValue = {
-    _readBlobValue(values, cursor._get("read.properties.configuration").asInstanceOf[Config]);
+  def readBlobValue(values: Array[Long]): BlobValue = {
+    _readBlobValue(values);
   }
 
   def _unpackBlobValue(values: Array[Long]): (BlobId, Long, MimeType) = {
@@ -307,33 +301,30 @@ object BlobIO extends Logging {
     val length = values(1) >> 16;
     val mimeType = values(1) & 0xFFFFL;
 
-    val bid = blobIdFactory.fromLongArray(values(2), values(3));
+    val bid = bpss.blobIdFactory.fromBytes(StreamUtils.convertLongArray2ByteArray(Array(values(2), values(3))));
     val mt = MimeType.fromCode(mimeType);
     (bid, length, mt);
   }
 
-  def _readBlobValue(values: Array[Long], conf: Config): BlobValue = {
+  def _readBlobValue(values: Array[Long]): BlobValue = {
     val (bid, length, mt) = _unpackBlobValue(values);
-    val storage: BlobStorage = conf.asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]().getBlobStorage;
-    val iss = storage.loadBatch(Array(bid)).head;
-    val blob = Blob.fromInputStreamSource(iss, length, Some(mt));
+    val loaded = bpss.blobStorage.loadBatch(Array(bid)).head;
+    val blob = Blob.fromInputStreamSource(loaded.get.streamSource, length, Some(mt));
     new BlobValue(Blob.withStoreId(blob, bid));
   }
 
-  def readBlobValue(block: PropertyBlock, store: PropertyStore, conf: Config): BlobValue = {
-    _readBlobValue(block.getValueBlocks(), conf);
+  def readBlobValue(block: PropertyBlock): BlobValue = {
+    _readBlobValue(block.getValueBlocks());
   }
 
   def onPropertyDelete(primitiveProxy: RecordProxy[_, Void],
                        propertyKey: Int,
-                       propertyRecords: RecordAccess[PropertyRecord, PrimitiveRecord],
                        block: PropertyBlock): Unit = {
     val values = block.getValueBlocks;
     val length = values(1) >> 16;
     //val digest = ByteArrayUtils.convertLongArray2ByteArray(Array(values(2), values(3)));
-    val conf = propertyRecords._get("loader.val$store.configuration").asInstanceOf[Config];
-    val bid = blobIdFactory.fromLongArray(values(2), values(3));
 
+    val bid = bpss.blobIdFactory.fromBytes(StreamUtils.convertLongArray2ByteArray(Array(values(2), values(3))));
     //TODO: delete blob?
     val bids = bid.asLiteralString();
     logger.debug(s"deleting blob: $bids");

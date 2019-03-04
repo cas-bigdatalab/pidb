@@ -1,7 +1,7 @@
 package cn.aipm.text
 
 import cn.pidb.blob.ValueComparator
-import cn.pidb.util.Config
+import cn.pidb.util.Configuration
 import info.debatty.java.stringsimilarity.{Cosine, Jaccard, JaroWinkler}
 
 /**
@@ -13,7 +13,7 @@ class JaroWinklerStringSimilarity extends ValueComparator {
     jw.similarity(str1.asInstanceOf[String], str2.asInstanceOf[String]);
   }
 
-  override def initialize(conf: Config): Unit = {
+  override def initialize(conf: Configuration): Unit = {
 
   }
 }
@@ -24,7 +24,7 @@ class JaccardStringSimilarity extends ValueComparator {
     jw.similarity(str1.asInstanceOf[String], str2.asInstanceOf[String]);
   }
 
-  override def initialize(conf: Config): Unit = {
+  override def initialize(conf: Configuration): Unit = {
 
   }
 }
@@ -35,7 +35,7 @@ class CosineStringSimilarity extends ValueComparator {
     jw.similarity(str1.asInstanceOf[String], str2.asInstanceOf[String]);
   }
 
-  override def initialize(conf: Config): Unit = {
+  override def initialize(conf: Configuration): Unit = {
 
   }
 }

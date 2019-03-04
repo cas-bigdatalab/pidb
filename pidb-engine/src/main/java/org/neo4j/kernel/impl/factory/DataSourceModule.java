@@ -23,7 +23,7 @@ import java.io.File;
 import java.time.Clock;
 import java.util.function.Supplier;
 
-import cn.pidb.engine.BlobPropertyStoreService;
+import cn.pidb.engine.BlobPropertyStoreServiceImpl;
 import org.neo4j.graphdb.DependencyResolver;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -212,7 +212,7 @@ public class DataSourceModule
         dataSourceManager.register( neoStoreDataSource );
 
         //NOTE: add blob
-        life.add(new BlobPropertyStoreService(storeDir, config, procedures));
+        life.add(new BlobPropertyStoreServiceImpl(storeDir, config, procedures));
 
         life.add( new VmPauseMonitorComponent( config, logging.getInternalLog( VmPauseMonitorComponent.class ), platformModule.jobScheduler ) );
 

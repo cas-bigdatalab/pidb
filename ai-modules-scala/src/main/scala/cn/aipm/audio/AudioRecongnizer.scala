@@ -2,7 +2,7 @@ package cn.aipm.audio
 
 import cn.pidb.blob.{Blob, PropertyExtractor}
 import cn.aipm.service.Services
-import cn.pidb.util.{Config, ConfigEx}
+import cn.pidb.util.{ConfigurationEx, Configuration, ConfigurationEx$}
 
 
 class AudioRecongnizer extends PropertyExtractor{
@@ -15,7 +15,7 @@ class AudioRecongnizer extends PropertyExtractor{
     Map("content" -> content)
   })
 
-  override def initialize(conf: Config): Unit = {
-    aipmHttpHostUrl = ConfigEx.config2Ex(conf).getRequiredValueAsString("aipm.http.host.url")
+  override def initialize(conf: Configuration): Unit = {
+    aipmHttpHostUrl = ConfigurationEx.config2Ex(conf).getRequiredValueAsString("aipm.http.host.url")
   }
 }

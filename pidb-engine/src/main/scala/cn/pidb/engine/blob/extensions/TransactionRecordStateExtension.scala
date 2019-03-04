@@ -1,7 +1,7 @@
 package cn.pidb.engine.blob.extensions
 
-import cn.pidb.blob.storage.BlobStorage
 import cn.pidb.blob.{Blob, BlobId}
+import cn.pidb.engine.BlobPropertyStoreService
 import cn.pidb.util.Logging
 
 import scala.collection.mutable.ArrayBuffer
@@ -11,12 +11,12 @@ class TransactionRecordStateExtension extends Logging {
 
   def addBlob(id: BlobId, blob: Blob) = blobChanges += BlobAdd(id, blob)
 
-  def flushBlobs(storage: BlobStorage): Unit = {
+  def flushBlobs(bpss: BlobPropertyStoreService): Unit = {
     blobChanges.filter(_.isInstanceOf[BlobAdd]).map(
       _ match {
         case BlobAdd(id, blob) => id -> blob
       }).grouped(100).foreach(ops => {
-      storage.saveBatch(ops);
+      bpss.blobStorage.saveBatch(ops);
       logger.debug(s"blobs saved: $ops");
     }
     )

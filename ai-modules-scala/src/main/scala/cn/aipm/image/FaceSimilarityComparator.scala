@@ -2,8 +2,8 @@ package cn.aipm.image
 
 import cn.pidb.blob._
 import cn.aipm.service.Services
-import cn.pidb.util.Config
-import cn.pidb.util.ConfigEx._
+import cn.pidb.util.Configuration
+import cn.pidb.util.ConfigurationEx._
 
 
 class FaceSimilarityComparator extends SetComparator {
@@ -31,7 +31,7 @@ class FaceSimilarityComparator extends SetComparator {
 
   }
 
-  override def initialize(conf: Config): Unit = {
+  override def initialize(conf: Configuration): Unit = {
     aipmHttpHostUrl = conf.getRequiredValueAsString("aipm.http.host.url")
   }
 }

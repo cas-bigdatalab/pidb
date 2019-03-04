@@ -14,6 +14,12 @@
                 </bean>
                 <bean class="cn.pidb.engine.cypherplus.DomainExtractorEntry">
                     <property name="extractor">
+                        <bean class="cn.aipm.text.ChineseTokenizer"/>
+                    </property>
+                    <property name="domain" value="string"/>
+                </bean>
+                <bean class="cn.pidb.engine.cypherplus.DomainExtractorEntry">
+                    <property name="extractor">
                         <bean class="cn.aipm.text.SentimentClassifier"/>
                     </property>
                     <property name="domain" value="string"/>

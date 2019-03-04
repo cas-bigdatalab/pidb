@@ -1,8 +1,8 @@
 package cn.pidb.engine.blob
 
 import cn.pidb.blob.storage.BlobStorage
-import cn.pidb.engine.BlobPropertyStoreService
-import cn.pidb.engine.blob.extensions.{RuntimeContextHolder, TransactionRecordStateExtension}
+import cn.pidb.engine.{BlobPropertyStoreService, BlobPropertyStoreServiceImpl}
+import cn.pidb.engine.blob.extensions.{GraphServiceContext, TransactionRecordStateExtension}
 import cn.pidb.util.ReflectUtils._
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.api.CommandVisitor
@@ -20,8 +20,8 @@ class BlobValueBatchFlushCommand(val neoStores: NeoStores, val txState: Readable
   override def handle(handler: CommandVisitor): Boolean = {
     //println(handler);
     val conf = neoStores._get("config").asInstanceOf[Config];
-    val storage: BlobStorage = conf.asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]().getBlobStorage;
-    recordState.asInstanceOf[TransactionRecordStateExtension].flushBlobs(storage);
+    val spss: BlobPropertyStoreService = conf.asInstanceOf[GraphServiceContext].getBlobPropertyStoreService;
+    recordState.asInstanceOf[TransactionRecordStateExtension].flushBlobs(spss);
     true;
   }
 

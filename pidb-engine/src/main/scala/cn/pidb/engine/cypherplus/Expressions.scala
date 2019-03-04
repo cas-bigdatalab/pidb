@@ -211,6 +211,8 @@ trait Expressions extends Parser
         ~~>> (x => BlobLiteralExpr(BlobFileURL(x)))
         | LeftArrowHead ~ ignoreCase("BLOB://") ~ BlobURLPath ~ RightArrowHead
         ~~>> (x => BlobLiteralExpr(BlobBase64URL(x.mkString(""))))
+        | LeftArrowHead ~ ignoreCase("INTERNAL://") ~ BlobURLPath ~ RightArrowHead
+        ~~>> (x => BlobLiteralExpr(InternalUrl(x.mkString(""))))
         | LeftArrowHead ~ ignoreCase("HTTP://") ~ BlobURLPath ~ RightArrowHead
         ~~>> (x => BlobLiteralExpr(BlobHttpURL(s"http://${x.mkString("")}")))
         | LeftArrowHead ~ ignoreCase("HTTPS://") ~ BlobURLPath ~ RightArrowHead

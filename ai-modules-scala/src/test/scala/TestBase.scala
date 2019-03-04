@@ -1,7 +1,7 @@
 package cn.aipm.test
-import cn.pidb.util.Config
+import cn.pidb.util.Configuration
 
-class ConfigTemp extends Config{
+class ConfigTemp extends Configuration{
   override def getRaw(name: String): Option[String] = {
     val configs = Map("aipm.http.host.url"->"http://10.0.86.128:8081/")
     configs.get(name)

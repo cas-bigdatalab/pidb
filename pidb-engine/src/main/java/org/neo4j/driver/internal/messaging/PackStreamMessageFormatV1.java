@@ -176,7 +176,7 @@ public class PackStreamMessageFormatV1 implements MessageFormat {
 
                 //NOTE: blob
                 case BLOB:
-                    BlobIO.writeBlobValue((BoltBlobValue) value, packer);
+                    BlobIO.of(packer).writeBlobValue((BoltBlobValue) value, packer);
                     break;
 
                 case BYTES:
@@ -321,7 +321,7 @@ public class PackStreamMessageFormatV1 implements MessageFormat {
 
         private Value unpackValue() throws IOException {
             //NOTE: blob support
-            Value blobValue = BlobIO.readBlobValueFromBoltStreamIfAvailable(unpacker);
+            Value blobValue = BlobIO.of(unpacker).readBlobValueFromBoltStreamIfAvailable(unpacker);
             if (blobValue != null)
                 return blobValue;
 

@@ -3,12 +3,12 @@ package cn.pidb.engine.storage
 import java.io._
 
 import cn.pidb.blob._
-import cn.pidb.blob.storage.BlobStorage
+import cn.pidb.blob.storage.{BlobStorage, RollbackCommand}
 import cn.pidb.engine.buffer.Buffer
 import cn.pidb.engine.util.{FileUtils, HBaseUtils}
-import cn.pidb.util.ConfigEx._
+import cn.pidb.util.ConfigurationEx._
 import cn.pidb.util.StreamUtils._
-import cn.pidb.util.{Config, Logging}
+import cn.pidb.util.{Configuration, Logging}
 import org.apache.commons.io.IOUtils
 import org.apache.hadoop.hbase.client.ColumnFamilyDescriptorBuilder.ModifyableColumnFamilyDescriptor
 import org.apache.hadoop.hbase.client.TableDescriptorBuilder.ModifyableTableDescriptor
@@ -28,7 +28,7 @@ trait Bufferable {
 
 }
 
-//FIXME: choose better class name, this class is designed only for blob storage, not for nodes/properties
+//FIXME: choose a better class name, this class is designed only for blob storage, not for nodes/properties
 trait Storage extends BlobStorage with Logging {
   protected var _blobIdFac: BlobIdFactory = _
 
@@ -36,37 +36,43 @@ trait Storage extends BlobStorage with Logging {
 
   def check(bid: BlobId): Boolean
 
-  def delete(bid: BlobId): Unit;
+  def delete(bid: BlobId): RollbackCommand;
 
-  def save(bid: BlobId, blob: Blob): Unit;
+  def save(bid: BlobId, blob: Blob): RollbackCommand;
 
-  def load(bid: BlobId): InputStreamSource;
+  def load(bid: BlobId): Option[Blob];
 
-  def deleteBatch(bids: Iterable[BlobId]): Unit = bids.foreach(delete)
+  def createRollbackCommand(commands: Iterable[RollbackCommand]): RollbackCommand =
+    new RollbackCommand() {
+      override def perform(): Unit = commands.foreach(_.perform())
+    }
 
-  def saveBatch(blobs: Iterable[(BlobId, Blob)]): Unit = blobs.foreach(a => save(a._1, a._2))
+  def deleteBatch(bids: Iterable[BlobId]): RollbackCommand = createRollbackCommand(bids.map(delete))
+
+  def saveBatch(blobs: Iterable[(BlobId, Blob)]): RollbackCommand = createRollbackCommand(blobs.map(a => save(a._1, a._2)))
 
   def checkExistBatch(bids: Iterable[BlobId]): Iterable[Boolean] = bids.map(check)
 
-  def loadBatch(bids: Iterable[BlobId]): Iterable[InputStreamSource] = bids.map(load)
+  def loadBatch(bids: Iterable[BlobId]): Iterable[Option[Blob]] = bids.map(load)
 }
 
 // TODO ref
+//TODO: externalStorage?
 class HybridStorage(persistStorage: Storage, val buffer: Buffer) extends Storage {
 
-  override def deleteBatch(bids: Iterable[BlobId]): Unit = {
+  override def deleteBatch(bids: Iterable[BlobId]): RollbackCommand = {
     buffer.getBufferableStorage.deleteBatch(bids)
     persistStorage.deleteBatch(bids)
   }
 
-  override def saveBatch(blobs: Iterable[(BlobId, Blob)]): Unit = buffer.getBufferableStorage.saveBatch(blobs)
+  override def saveBatch(blobs: Iterable[(BlobId, Blob)]): RollbackCommand = buffer.getBufferableStorage.saveBatch(blobs)
 
   override def checkExistBatch(bids: Iterable[BlobId]): Iterable[Boolean] = bids.map(f =>
     buffer.getBufferableStorage.check(f) || persistStorage.check(f))
 
-  override def loadBatch(bids: Iterable[BlobId]): Iterable[InputStreamSource] = persistStorage.loadBatch(bids)
+  override def loadBatch(bids: Iterable[BlobId]): Iterable[Option[Blob]] = persistStorage.loadBatch(bids)
 
-  override def initialize(storeDir: File, blobIdFac: BlobIdFactory, conf: Config): Unit = {
+  override def initialize(storeDir: File, blobIdFac: BlobIdFactory, conf: Configuration): Unit = {
     buffer.checkInit()
     buffer.initialize(storeDir, blobIdFac, conf)
   }
@@ -76,13 +82,14 @@ class HybridStorage(persistStorage: Storage, val buffer: Buffer) extends Storage
     persistStorage.disconnect()
   }
 
-  override def save(bid: BlobId, blob: Blob): Unit = buffer.getBufferableStorage.save(bid, blob)
+  override def save(bid: BlobId, blob: Blob): RollbackCommand = buffer.getBufferableStorage.save(bid, blob)
 
-  override def load(bid: BlobId): InputStreamSource = persistStorage.load(bid)
+  //FIXME: what if it exist in buffer?
+  override def load(bid: BlobId): Option[Blob] = persistStorage.load(bid)
 
   override def check(bid: BlobId): Boolean = buffer.getBufferableStorage.check(bid) || persistStorage.check(bid)
 
-  override def delete(bid: BlobId): Unit = {
+  override def delete(bid: BlobId): RollbackCommand = {
     buffer.getBufferableStorage.delete(bid)
     persistStorage.delete(bid)
   }
@@ -90,15 +97,29 @@ class HybridStorage(persistStorage: Storage, val buffer: Buffer) extends Storage
 
 class HBaseStorage extends Storage {
   private var _table: Table = _
+  //FIXME: _conn?
   private var conn: Connection = _
 
-  override def delete(bid: BlobId): Unit =
+  override def delete(bid: BlobId): RollbackCommand = {
     _table.delete(HBaseUtils.buildDelete(bid))
+    new RollbackCommand {
+      override def perform(): Unit = {
+        //TODO
+      }
+    }
+  }
 
-  override def deleteBatch(bids: Iterable[BlobId]): Unit =
+  override def deleteBatch(bids: Iterable[BlobId]): RollbackCommand = {
     _table.delete(bids.map(f => HBaseUtils.buildDelete(f)).toList)
 
-  override def initialize(storeDir: File, blobIdFac: BlobIdFactory, conf: Config): Unit = {
+    new RollbackCommand {
+      override def perform(): Unit = {
+        //TODO
+      }
+    }
+  }
+
+  override def initialize(storeDir: File, blobIdFac: BlobIdFactory, conf: Configuration): Unit = {
     val hbaseConf = HBaseConfiguration.create()
     val zkQ = conf.getValueAsString("blob.storage.hbase.zookeeper.quorum", "localhost")
     val zkNode = conf.getValueAsString("blog.storage.hbase.zookeeper.znode.parent", "/hbase")
@@ -125,25 +146,32 @@ class HBaseStorage extends Storage {
     conn.close()
   }
 
-  override def save(bid: BlobId, blob: Blob): Unit =
+  override def save(bid: BlobId, blob: Blob): RollbackCommand = {
     _table.put(HBaseUtils.buildPut(blob, bid))
 
-  override def load(bid: BlobId): InputStreamSource = {
+    new RollbackCommand {
+      override def perform(): Unit = {
+        //TODO
+      }
+    }
+  }
+
+  override def load(bid: BlobId): Option[Blob] = {
     val res = _table.get(HBaseUtils.buildGetBlob(bid))
     if (!res.isEmpty) {
       val len = Bytes.toLong(res.getValue(HBaseUtils.columnFamily, HBaseUtils.qualifyFamilyLen))
       val mimeType = Bytes.toLong(res.getValue(HBaseUtils.columnFamily, HBaseUtils.qualifyFamilyMT))
       val value = res.getValue(HBaseUtils.columnFamily, HBaseUtils.qualifyFamilyBlob)
       val in = new ByteArrayInputStream(value)
-      Blob.fromInputStreamSource(new InputStreamSource() {
+      Some(Blob.fromInputStreamSource(new InputStreamSource() {
         def offerStream[T](consume: InputStream => T): T = {
           val t = consume(in)
           in.close()
           t
         }
-      }, len, Some(MimeType.fromCode(mimeType))).streamSource
+      }, len, Some(MimeType.fromCode(mimeType))))
     }
-    else null
+    else None
   }
 
   override def check(bid: BlobId): Boolean = !_table.exists(HBaseUtils.buildGetBlob(bid))
@@ -152,7 +180,7 @@ class HBaseStorage extends Storage {
 class FileStorage extends Storage with Bufferable {
   var _blobDir: File = _
 
-  override def initialize(storeDir: File, blobIdFac: BlobIdFactory, conf: Config): Unit = {
+  override def initialize(storeDir: File, blobIdFac: BlobIdFactory, conf: Configuration): Unit = {
     val baseDir: File = storeDir; //new File(conf.getRaw("unsupported.dbms.directories.neo4j_home").get());
     _blobDir = conf.getAsFile("blob.storage.file.dir", baseDir, new File(baseDir, "/blob"))
     if (!_blobDir.exists()) {
@@ -165,9 +193,15 @@ class FileStorage extends Storage with Bufferable {
   override def disconnect(): Unit = {
   }
 
-  override def delete(bid: BlobId): Unit = {
+  override def delete(bid: BlobId): RollbackCommand = {
     val f = FileUtils.blobFile(bid, _blobDir)
     if (f.exists()) f.delete()
+
+    new RollbackCommand {
+      override def perform(): Unit = {
+        //TODO
+      }
+    }
   }
 
   override def getAllBlob: Iterable[BlobId] = FileUtils.listAllFiles(_blobDir).filter(f => f.isFile).map(f => _blobIdFac.fromLiteralString(f.getName))
@@ -178,7 +212,7 @@ class FileStorage extends Storage with Bufferable {
     }
   }
 
-  override def save(bid: BlobId, blob: Blob): Unit = {
+  override def save(bid: BlobId, blob: Blob): RollbackCommand = {
     val file = FileUtils.blobFile(bid, _blobDir)
     file.getParentFile.mkdirs()
 
@@ -191,9 +225,16 @@ class FileStorage extends Storage with Bufferable {
       IOUtils.copy(bis, fos);
     }
     fos.close()
+
+    new RollbackCommand {
+      override def perform(): Unit = {
+        //TODO
+      }
+    }
   }
 
-  override def load(bid: BlobId): InputStreamSource = FileUtils.readFromBlobFile(FileUtils.blobFile(bid, _blobDir), _blobIdFac)._2.streamSource
+  //FIXME: consider that it does not exist
+  override def load(bid: BlobId): Option[Blob] = Some(FileUtils.readFromBlobFile(FileUtils.blobFile(bid, _blobDir), _blobIdFac)._2)
 
   override def check(bid: BlobId): Boolean = FileUtils.blobFile(bid, _blobDir).exists()
 }

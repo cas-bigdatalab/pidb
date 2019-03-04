@@ -19,32 +19,33 @@
  */
 package cn.pidb.engine.cypherplus
 
-import cn.pidb.engine.BlobPropertyStoreService
-import cn.pidb.engine.blob.extensions.RuntimeContextHolder
+import cn.pidb.engine.BlobPropertyStoreServiceImpl
+import cn.pidb.engine.blob.extensions.GraphServiceContext
 import cn.pidb.util.ReflectUtils._
 import org.neo4j.cypher.internal.runtime.interpreted.commands.expressions._
 import org.neo4j.cypher.internal.runtime.interpreted.commands.predicates.Predicate
 import org.neo4j.cypher.internal.runtime.interpreted.commands.values.KeyToken
 import org.neo4j.cypher.internal.runtime.interpreted.pipes.QueryState
 import org.neo4j.cypher.internal.runtime.interpreted.{ExecutionContext, UpdateCountingQueryContext}
+import org.neo4j.kernel.configuration.Config
 import org.neo4j.values.AnyValue
 import org.neo4j.values.storable._
 import org.neo4j.values.virtual.VirtualValues
 
 object QueryStateUtils {
-  def getBlobPropertyStoreService(state: QueryState): BlobPropertyStoreService = {
+  def getBlobPropertyStoreService(state: QueryState): BlobPropertyStoreServiceImpl = {
     {
       if (state.query.isInstanceOf[UpdateCountingQueryContext])
         state._get("query.inner.inner.transactionalContext.tc.graph.graph.config")
       else
         state._get("query.inner.transactionalContext.tc.graph.graph.config")
-    }.asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]();
+    }.asInstanceOf[GraphServiceContext].contextGet[BlobPropertyStoreServiceImpl]();
   }
 }
 
 case class BlobLiteralCommand(url: BlobURL) extends Expression {
   def apply(ctx: ExecutionContext, state: QueryState): AnyValue = {
-    BlobValue(url.createBlob);
+    BlobValue(url.createBlob(state.query._get("config").asInstanceOf[Config].getBlobPropertyStoreService));
   }
 
   override def rewrite(f: (Expression) => Expression): Expression = f(this)
@@ -63,7 +64,7 @@ case class CustomPropertyCommand(mapExpr: Expression, propertyKey: KeyToken)
 
       case x: Value =>
         val pv = QueryStateUtils.getBlobPropertyStoreService(state)
-          .getCustomPropertyProvider
+          .customPropertyProvider
           .getCustomProperty(x.asObject, propertyKey.name)
 
         pv.map(Values.unsafeOf(_, true)).getOrElse(Values.NO_VALUE)
@@ -94,7 +95,7 @@ trait SemanticOperatorSupport {
 
   def rewriteMethod: (Expression, Option[AlgoNameWithThresholdExpr], Expression) => Expression
 
-  def execute[T](m: ExecutionContext, state: QueryState)(f: (AnyValue, AnyValue, BlobPropertyStoreService) => T): T = {
+  def execute[T](m: ExecutionContext, state: QueryState)(f: (AnyValue, AnyValue, BlobPropertyStoreServiceImpl) => T): T = {
     val lValue = lhsExpr(m, state)
     val rValue = rhsExpr(m, state)
     f(lValue, rValue, QueryStateUtils.getBlobPropertyStoreService(state))
@@ -117,12 +118,12 @@ case class SemanticLikeCommand(lhsExpr: Expression, ant: Option[AlgoNameWithThre
                               (implicit converter: TextValue => TextValue = identity)
   extends Predicate with SemanticOperatorSupport {
   override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
-    execute(m, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
+    execute(m, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreServiceImpl) =>
       (lValue, rValue) match {
         case (Values.NO_VALUE, Values.NO_VALUE) => Some(true)
         case (_, Values.NO_VALUE) => Some(false)
         case (Values.NO_VALUE, _) => Some(false)
-        case (a: Value, b: Value) => bpss.getValueMatcher.like(a.asObject(), b.asObject(), algorithm, threshold)
+        case (a: Value, b: Value) => bpss.valueMatcher.like(a.asObject(), b.asObject(), algorithm, threshold)
       }
     }
   }
@@ -151,12 +152,12 @@ case class SemanticContainCommand(lhsExpr: Expression, ant: Option[AlgoNameWithT
   extends Predicate with SemanticOperatorSupport {
 
   override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
-    execute(m, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
+    execute(m, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreServiceImpl) =>
       (lValue, rValue) match {
         case (Values.NO_VALUE, Values.NO_VALUE) => Some(true)
         case (_, Values.NO_VALUE) => Some(false)
         case (Values.NO_VALUE, _) => Some(false)
-        case (a: Value, b: Value) => bpss.getValueMatcher.containsOne(a.asObject(), b.asObject(), algorithm, threshold)
+        case (a: Value, b: Value) => bpss.valueMatcher.containsOne(a.asObject(), b.asObject(), algorithm, threshold)
       }
     }
   }
@@ -183,12 +184,12 @@ case class SemanticContainSetCommand(lhsExpr: Expression, ant: Option[AlgoNameWi
   extends Predicate with SemanticOperatorSupport {
 
   override def isMatch(m: ExecutionContext, state: QueryState): Option[Boolean] = {
-    execute(m, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
+    execute(m, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreServiceImpl) =>
       (lValue, rValue) match {
         case (Values.NO_VALUE, Values.NO_VALUE) => Some(true)
         case (_, Values.NO_VALUE) => Some(false)
         case (Values.NO_VALUE, _) => Some(false)
-        case (a: Value, b: Value) => bpss.getValueMatcher.containsSet(a.asObject(), b.asObject(), algorithm, threshold)
+        case (a: Value, b: Value) => bpss.valueMatcher.containsSet(a.asObject(), b.asObject(), algorithm, threshold)
       }
     }
   }
@@ -215,10 +216,10 @@ case class SemanticCompareCommand(lhsExpr: Expression, ant: Option[AlgoNameWithT
   extends Expression with SemanticOperatorSupport {
 
   override def apply(ctx: ExecutionContext, state: QueryState): AnyValue = {
-    execute(ctx, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
+    execute(ctx, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreServiceImpl) =>
       (lValue, rValue) match {
         case (x, y) if x == Values.NO_VALUE || y == Values.NO_VALUE => Values.NO_VALUE
-        case (a: Value, b: Value) => bpss.getValueMatcher.compareOne(a.asObject, b.asObject(), algorithm).
+        case (a: Value, b: Value) => bpss.valueMatcher.compareOne(a.asObject, b.asObject(), algorithm).
           map(Values.doubleValue(_)).getOrElse(Values.NO_VALUE)
       }
     }
@@ -234,10 +235,10 @@ case class SemanticSetCompareCommand(lhsExpr: Expression, ant: Option[AlgoNameWi
   extends Expression with SemanticOperatorSupport {
 
   override def apply(ctx: ExecutionContext, state: QueryState): AnyValue = {
-    execute(ctx, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreService) =>
+    execute(ctx, state) { (lValue: AnyValue, rValue: AnyValue, bpss: BlobPropertyStoreServiceImpl) =>
       (lValue, rValue) match {
         case (x, y) if x == Values.NO_VALUE || y == Values.NO_VALUE => Values.NO_VALUE
-        case (a: Value, b: Value) => bpss.getValueMatcher.compareSet(a.asObject, b.asObject(), algorithm).
+        case (a: Value, b: Value) => bpss.valueMatcher.compareSet(a.asObject, b.asObject(), algorithm).
           map {
             aa => VirtualValues.list(aa.map {
               a => VirtualValues.list(a.map(x => Values.doubleValue(x)).toSeq: _*)

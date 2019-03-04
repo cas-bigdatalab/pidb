@@ -1,7 +1,7 @@
 package cn.pidb.engine.cypherplus
 
 import cn.pidb.blob._
-import cn.pidb.util.{Config, Logging}
+import cn.pidb.util.{Configuration, Logging}
 
 import scala.beans.BeanProperty
 import scala.collection.mutable
@@ -62,7 +62,7 @@ class CypherPluginRegistry {
   @BeanProperty var extractors: Array[DomainExtractorEntry] = Array();
   @BeanProperty var comparators: Array[DomainComparatorEntry] = Array();
 
-  def createCustomPropertyProvider(conf: Config) = new CustomPropertyProvider {
+  def createCustomPropertyProvider(conf: Configuration) = new CustomPropertyProvider {
     extractors.foreach(_.extractor.initialize(conf));
 
     //propertyName, typeName
@@ -101,7 +101,7 @@ class CypherPluginRegistry {
     }
   }
 
-  def createValueComparatorRegistry(conf: Config) = new ValueMatcher with Logging {
+  def createValueComparatorRegistry(conf: Configuration) = new ValueMatcher with Logging {
     type CompareAnyMethod = (Any, Any) => Any;
     type CompareValueMethod = (Any, Any) => Double;
     type CompareSetMethod = (Any, Any) => Array[Array[Double]];
