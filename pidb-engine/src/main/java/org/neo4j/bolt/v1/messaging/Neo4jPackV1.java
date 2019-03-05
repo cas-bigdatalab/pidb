@@ -19,7 +19,10 @@
  */
 package org.neo4j.bolt.v1.messaging;
 
+import cn.pidb.blob.Blob;
+import cn.pidb.engine.BlobPropertyStoreService;
 import cn.pidb.engine.blob.BlobIO;
+import cn.pidb.engine.blob.BlobIO$;
 import org.neo4j.bolt.messaging.StructType;
 import org.neo4j.bolt.v1.packstream.PackInput;
 import org.neo4j.bolt.v1.packstream.PackOutput;
@@ -29,10 +32,7 @@ import org.neo4j.collection.primitive.PrimitiveLongIntKeyValueArray;
 import org.neo4j.kernel.api.exceptions.Status;
 import org.neo4j.values.AnyValue;
 import org.neo4j.values.AnyValueWriter;
-import org.neo4j.values.storable.CoordinateReferenceSystem;
-import org.neo4j.values.storable.TextArray;
-import org.neo4j.values.storable.TextValue;
-import org.neo4j.values.storable.Values;
+import org.neo4j.values.storable.*;
 import org.neo4j.values.virtual.*;
 
 import java.io.IOException;
@@ -84,7 +84,7 @@ public class Neo4jPackV1 implements Neo4jPack {
         return getClass().getSimpleName();
     }
 
-    protected static class PackerV1 extends PackStream.Packer implements AnyValueWriter<IOException>, Neo4jPack.Packer {
+    protected static class PackerV1 extends PackStream.Packer implements AnyValueWriter<IOException>, Neo4jPack.Packer, BlobValueWriter {
         private static final int INITIAL_PATH_CAPACITY = 500;
         private static final int NO_SUCH_ID = -1;
         private final PrimitiveLongIntKeyValueArray nodeIndexes =
@@ -290,6 +290,12 @@ public class Neo4jPackV1 implements Neo4jPack {
             throw new BoltIOException(Status.Request.Invalid, "DateTime is not yet supported as a return type in Bolt");
         }
 
+        //NOTE: blob
+        @Override
+        public void writeBlob(Blob blob) throws IOException {
+            BlobIO.writeBlobValue(blob, this.out);
+        }
+
         @Override
         public void writeNull() throws IOException {
             packNull();
@@ -376,7 +382,7 @@ public class Neo4jPackV1 implements Neo4jPack {
         @Override
         public AnyValue unpack() throws IOException {
             //NOTE: blob support
-            AnyValue blobValue = BlobIO.of(this).readBlobValueFromBoltStreamIfAvailable(this);
+            AnyValue blobValue = BlobIO.readBlobValueFromBoltStreamIfAvailable(this);
             if (blobValue != null)
                 return blobValue;
 

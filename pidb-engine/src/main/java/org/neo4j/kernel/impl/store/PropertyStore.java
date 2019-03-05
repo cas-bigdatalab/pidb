@@ -20,6 +20,7 @@
 package org.neo4j.kernel.impl.store;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.OpenOption;
@@ -29,6 +30,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.function.ToIntFunction;
 
+import cn.pidb.blob.Blob;
+import cn.pidb.engine.blob.BlobIO;
 import org.neo4j.collection.primitive.PrimitiveLongObjectMap;
 import org.neo4j.cursor.Cursor;
 import org.neo4j.helpers.collection.Iterables;
@@ -51,6 +54,7 @@ import org.neo4j.logging.LogProvider;
 import org.neo4j.storageengine.api.StorageStatement;
 import org.neo4j.string.UTF8;
 import org.neo4j.values.storable.ArrayValue;
+import org.neo4j.values.storable.BlobValueWriter;
 import org.neo4j.values.storable.CoordinateReferenceSystem;
 import org.neo4j.values.storable.Value;
 
@@ -410,7 +414,7 @@ public class PropertyStore extends CommonAbstractStore<PropertyRecord,NoStoreHea
         return ByteBuffer.allocate( capacity ).order( ByteOrder.LITTLE_ENDIAN ).put( buffer );
     }
 
-    private static class PropertyBlockValueWriter extends TemporalValueWriterAdapter<IllegalArgumentException>
+    private static class PropertyBlockValueWriter extends TemporalValueWriterAdapter<IllegalArgumentException> implements BlobValueWriter
     {
         private final PropertyBlock block;
         private final int keyId;
@@ -633,6 +637,11 @@ public class PropertyStore extends CommonAbstractStore<PropertyRecord,NoStoreHea
             {
                 throw new UnsupportedFormatCapabilityException( Capability.TEMPORAL_PROPERTIES );
             }
+        }
+
+        @Override
+        public void writeBlob(Blob blob) throws IOException {
+           BlobIO.saveBlob(blob, this);
         }
     }
 

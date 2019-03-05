@@ -63,17 +63,6 @@ class LocalPidbTest extends TestBase {
   }
 
   @Test
-  def testNodeId():Unit={
-    val db2 = openDatabase();
-    val tx2 = db2.beginTx();
-    db2.execute("create (zhai:Person {name: '翟天临', age:38, pet: <http://s1.sinaimg.cn/middle/005AE7Quzy7rL9TUfZee0&690>}) ");
-    val node1 = db2.createNode();
-    println(s"node id: ${node1.getId}");
-    tx2.success();
-    tx2.close();
-  }
-
-  @Test
   def testCypherQuery(): Unit = {
     //reload database
     val db2 = openDatabase();

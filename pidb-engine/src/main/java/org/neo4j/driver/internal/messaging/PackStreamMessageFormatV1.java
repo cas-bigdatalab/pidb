@@ -18,7 +18,6 @@
 package org.neo4j.driver.internal.messaging;
 
 import cn.pidb.engine.blob.BlobIO;
-import cn.pidb.engine.blob.BoltBlobValue;
 import org.neo4j.driver.internal.InternalNode;
 import org.neo4j.driver.internal.InternalPath;
 import org.neo4j.driver.internal.InternalRelationship;
@@ -176,7 +175,7 @@ public class PackStreamMessageFormatV1 implements MessageFormat {
 
                 //NOTE: blob
                 case BLOB:
-                    BlobIO.of(packer).writeBlobValue((BoltBlobValue) value, packer);
+                    BlobIO.writeBlobValue(value.asBlob(), packer);
                     break;
 
                 case BYTES:
@@ -321,7 +320,7 @@ public class PackStreamMessageFormatV1 implements MessageFormat {
 
         private Value unpackValue() throws IOException {
             //NOTE: blob support
-            Value blobValue = BlobIO.of(unpacker).readBlobValueFromBoltStreamIfAvailable(unpacker);
+            Value blobValue = BlobIO.readBlobValueFromBoltStreamIfAvailable(unpacker);
             if (blobValue != null)
                 return blobValue;
 

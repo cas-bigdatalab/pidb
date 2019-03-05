@@ -2,7 +2,10 @@ package cn.pidb.blob
 
 import java.io._
 import java.net.URL
+import java.util.UUID
 
+import cn.pidb.util.StreamUtils
+import cn.pidb.util.StreamUtils._
 import org.apache.commons.io.IOUtils
 import org.apache.http.client.methods.HttpGet
 import org.apache.http.impl.client.HttpClientBuilder
@@ -54,6 +57,43 @@ trait BlobIdFactory {
   def fromBytes(bytes: Array[Byte]): BlobId;
 
   def fromLiteralString(bid: String): BlobId;
+}
+
+class UUIDBlobIdFactory extends BlobIdFactory {
+  private def fromUUID(uuid: UUID): BlobId = new BlobId() {
+    def asLongArray(): Array[Long] = {
+      Array[Long](uuid.getMostSignificantBits, uuid.getLeastSignificantBits);
+    }
+
+    def asByteArray(): Array[Byte] = {
+      StreamUtils.convertLongArray2ByteArray(asLongArray());
+    }
+
+    override def asLiteralString(): String = {
+      uuid.toString;
+    }
+  }
+
+  def fromLongArray(mostSigBits: Long, leastSigBits: Long) = fromUUID(new UUID(mostSigBits, leastSigBits));
+
+  override def create(): BlobId = fromUUID(UUID.randomUUID());
+
+  override def fromBytes(bytes: Array[Byte]): BlobId = {
+    val is = new ByteArrayInputStream(bytes);
+    fromLongArray(is.readLong(), is.readLong());
+  }
+
+  override def readFromStream(is: InputStream): BlobId = {
+    fromBytes(is.readBytes(16))
+  }
+
+  override def fromLiteralString(bid: String): BlobId = {
+    fromUUID(UUID.fromString(bid));
+  }
+}
+
+object BlobIdFactory {
+  val get = new UUIDBlobIdFactory;
 }
 
 object Blob {

@@ -188,7 +188,7 @@ public enum PropertyType {
     BLOB(15) {
         @Override
         public Value value(PropertyBlock block, PropertyStore store) {
-            return BlobIO.of(store.configuration).readBlobValue(block);
+            return BlobIO.readBlobValue(block, store.configuration);
         }
 
         @Override
@@ -197,7 +197,7 @@ public enum PropertyType {
         }
 
         public void onPropertyDelete(RecordAccess.RecordProxy<?, Void> primitiveProxy, int propertyKey, RecordAccess<PropertyRecord, PrimitiveRecord> propertyRecords, PropertyBlock block) {
-            BlobIO.of(propertyRecords).onPropertyDelete(primitiveProxy, propertyKey, block);
+            BlobIO.onPropertyDelete(primitiveProxy, propertyKey, propertyRecords, block);
         }
     };
 

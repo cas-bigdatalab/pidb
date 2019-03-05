@@ -1,7 +1,6 @@
 package cn.pidb.engine.blob
 
-import cn.pidb.blob.storage.BlobStorage
-import cn.pidb.engine.{BlobStoreService$, BlobPropertyStoreServiceImpl}
+import cn.pidb.engine.BlobPropertyStoreService
 import cn.pidb.engine.blob.extensions.{GraphServiceContext, TransactionRecordStateExtension}
 import cn.pidb.util.ReflectUtils._
 import org.neo4j.kernel.configuration.Config

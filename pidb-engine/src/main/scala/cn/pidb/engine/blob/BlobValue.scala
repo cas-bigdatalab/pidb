@@ -1,6 +1,9 @@
 package org.neo4j.values.storable
 
+import java.io.IOException
+
 import cn.pidb.blob.Blob
+import cn.pidb.engine.BlobPropertyStoreService
 import cn.pidb.engine.blob.BlobIO
 import org.neo4j.values.{AnyValue, ValueMapper}
 
@@ -11,6 +14,11 @@ trait BlobHolder {
   val blob: Blob;
 }
 
+trait BlobValueWriter{
+  @throws(classOf[IOException])
+  def writeBlob(blob: Blob)
+}
+
 /**
   * Created by bluejoe on 2018/12/12.
   */
@@ -18,7 +26,8 @@ case class BlobValue(val blob: Blob) extends ScalarValue with BlobHolder {
   override def unsafeCompareTo(value: Value): Int = blob.length.compareTo(value.asInstanceOf[BlobValue].blob.length)
 
   override def writeTo[E <: Exception](valueWriter: ValueWriter[E]): Unit = {
-    BlobIO.of(valueWriter).writeBlobValue(this, valueWriter);
+    //BlobPropertyStoreService.of(valueWriter).writeBlobValue(this, valueWriter);
+    valueWriter.asInstanceOf[BlobValueWriter].writeBlob(blob);
   }
 
   override def asObjectCopy(): AnyRef = blob;

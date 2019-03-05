@@ -1,18 +1,17 @@
 package cn.pidb.engine
 
 import java.io._
-import java.util.UUID
 import javax.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
 
 import cn.pidb.blob._
 import cn.pidb.blob.storage.{BlobStorage, RollbackCommand}
 import cn.pidb.engine.blob._
 import cn.pidb.engine.blob.extensions.{GraphServiceContext, TransactionRecordStateAware}
-import cn.pidb.engine.cypherplus.{CustomPropertyProvider, CypherPluginRegistry, ValueMatcher}
+import cn.pidb.engine.cypherplus.CypherPluginRegistry
 import cn.pidb.util.ConfigurationEx._
 import cn.pidb.util.ReflectUtils._
 import cn.pidb.util.StreamUtils._
-import cn.pidb.util.{Configuration, Logging, Neo2JavaValueMapper, StreamUtils}
+import cn.pidb.util.{Configuration, Logging, Neo2JavaValueMapper}
 import org.apache.commons.io.IOUtils
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.servlet.{ServletContextHandler, ServletHolder}
@@ -34,88 +33,11 @@ import scala.collection.mutable
 /**
   * Created by bluejoe on 2018/11/29.
   */
-trait BlobPropertyStoreService {
-  val customPropertyProvider: CustomPropertyProvider;
-  val valueMatcher: ValueMatcher;
-  val graphServiceContext: GraphServiceContext;
-  val configuration: Configuration;
-  val blobStorage: BlobStorage;
-  val blobIdFactory: BlobIdFactory;
-  val blobIO: BlobIO;
-}
-
-object BlobPropertyStoreService {
-  def of(config: Config): BlobPropertyStoreService =
-    config.asInstanceOf[GraphServiceContext].getBlobPropertyStoreService;
-
-  def of(state: QueryState): BlobPropertyStoreService = of({
-    if (state.query.isInstanceOf[UpdateCountingQueryContext])
-      state._get("query.inner.inner.transactionalContext.tc.graph.graph.config")
-    else
-      state._get("query.inner.transactionalContext.tc.graph.graph.config")
-  }.asInstanceOf[Config])
-
-  def of(cursor: DefaultPropertyCursor): BlobPropertyStoreService =
-    of(cursor._get("read.properties.configuration").asInstanceOf[Config]);
-
-  def of(trsa: TransactionRecordStateAware): BlobPropertyStoreService =
-    trsa.blobPropertyStoreService;
-
-  def of(propertyRecords: RecordAccess[PropertyRecord, PrimitiveRecord]): BlobPropertyStoreService =
-    of(propertyRecords._get("loader.val$store.configuration").asInstanceOf[Config]);
-
-  def of(valueWriter: ValueWriter[_]): BlobPropertyStoreService =
-    of(valueWriter._get("stringAllocator").asInstanceOf[TransactionRecordStateAware]);
-
-  private def getFromCurrentThread(): BlobPropertyStoreService = of(ThreadVars.get[Config]("config"))
-
-  def of(unpacker: Neo4jPack.Unpacker): BlobPropertyStoreService = getFromCurrentThread
-
-  def of(packer: Neo4jPack.Packer): BlobPropertyStoreService = getFromCurrentThread
-
-  def of(unpacker: PackStream.Unpacker): BlobPropertyStoreService = getFromCurrentThread
-
-  def of(packer: PackStream.Packer): BlobPropertyStoreService = getFromCurrentThread
-}
-
-class BlobPropertyStoreServiceImpl(storeDir: File, conf: Config, proceduresService: Procedures)
-  extends Lifecycle with BlobPropertyStoreService with Logging {
-  override val blobIO: BlobIO = new BlobIO(this);
-  override val graphServiceContext: GraphServiceContext = conf.asInstanceOf[GraphServiceContext];
-  override val blobIdFactory = new BlobIdFactory {
-    private def fromUUID(uuid: UUID): BlobId = new BlobId() {
-      def asLongArray(): Array[Long] = {
-        Array[Long](uuid.getMostSignificantBits, uuid.getLeastSignificantBits);
-      }
-
-      def asByteArray(): Array[Byte] = {
-        StreamUtils.convertLongArray2ByteArray(asLongArray());
-      }
-
-      override def asLiteralString(): String = {
-        uuid.toString;
-      }
-    }
-
-    def fromLongArray(mostSigBits: Long, leastSigBits: Long) = fromUUID(new UUID(mostSigBits, leastSigBits));
-
-    override def create(): BlobId = fromUUID(UUID.randomUUID());
-
-    override def fromBytes(bytes: Array[Byte]): BlobId = {
-      val is = new ByteArrayInputStream(bytes);
-      fromLongArray(is.readLong(), is.readLong());
-    }
-
-    override def readFromStream(is: InputStream): BlobId = {
-      fromBytes(is.readBytes(16))
-    }
-
-    override def fromLiteralString(bid: String): BlobId = {
-      fromUUID(UUID.fromString(bid));
-    }
-  }
-
-  override val configuration = new Configuration() {
+class BlobPropertyStoreService(storeDir: File, conf: Config, proceduresService: Procedures)
+extends Lifecycle with Logging {
+  val graphServiceContext: GraphServiceContext = conf.asInstanceOf[GraphServiceContext];
+  val blobIdFactory = BlobIdFactory.get
+  val configuration = new Configuration() {
     override def getRaw(name: String): Option[String] = {
       val raw = conf.getRaw(name);
       if (raw.isPresent) {
@@ -133,10 +55,10 @@ class BlobPropertyStoreServiceImpl(storeDir: File, conf: Config, proceduresServi
     .map(Class.forName(_).newInstance().asInstanceOf[BlobStorage])
     .getOrElse(createDefaultBlobStorage);
 
-  val _mapper = new Neo2JavaValueMapper(proceduresService.valueMapper().asInstanceOf[TypeMappers]);
-  var _blobServer: HttpBlobServer = _;
+  private val _mapper = new Neo2JavaValueMapper(proceduresService.valueMapper().asInstanceOf[TypeMappers]);
+  private var _blobServer: HttpBlobServer = _;
 
-  override val (valueMatcher, customPropertyProvider) = {
+  val (valueMatcher, customPropertyProvider) = {
     val cypherPluginRegistry = configuration.getRaw("blob.plugins.conf").map(x => {
       val xml = new File(x);
 

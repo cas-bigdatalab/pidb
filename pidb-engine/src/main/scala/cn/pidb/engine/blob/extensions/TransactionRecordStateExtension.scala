@@ -1,7 +1,7 @@
 package cn.pidb.engine.blob.extensions
 
 import cn.pidb.blob.{Blob, BlobId}
-import cn.pidb.engine.BlobStoreService$
+import cn.pidb.engine.{BlobPropertyStoreService}
 import cn.pidb.util.Logging
 
 import scala.collection.mutable.ArrayBuffer
