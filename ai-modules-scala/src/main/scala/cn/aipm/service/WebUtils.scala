@@ -50,7 +50,6 @@ object WebUtils {
       val mEntityBuilder = MultipartEntityBuilder.create()
       mEntityBuilder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE)
       for ((key , value) <- strContents){
-
         val strContent = ContentType.create("text/plain", Charset.forName("UTF-8"))
         mEntityBuilder.addTextBody(key,value,strContent)
       }
