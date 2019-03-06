@@ -13,17 +13,17 @@ class TestBase {
       val tx = db.beginTx();
       //create a node
       val node1 = db.createNode();
-      println(s"node id: ${node1.getId}");
+
       node1.setProperty("name", "bob");
       node1.setProperty("age", 30);
       node1.setProperty("bytes", IOUtils.toByteArray(new FileInputStream(new File("./test.png"))));
 
       //with a blob property
       node1.setProperty("photo", Blob.fromFile(new File("./test.png")));
-      node1.setProperty("photo2", Array(Blob.fromFile(new File("./test.png")), Blob.fromFile(new File("./test1.png"))));
+      node1.setProperty("photo2", (0 to 1).map(x => Blob.fromFile(new File("./test.png"))).toArray);
 
       val node2 = db.createNode();
-      println(s"node id: ${node2.getId}");
+
       node2.setProperty("name", "alex");
       //with a blob property
       node2.setProperty("photo", Blob.fromFile(new File("./test1.png")));

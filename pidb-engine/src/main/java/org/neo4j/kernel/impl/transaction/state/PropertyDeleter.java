@@ -115,7 +115,7 @@ public class PropertyDeleter {
         }
 
         ////NOTE: pidb add deletion hook
-        block.getType().onPropertyDelete(primitiveProxy, propertyKey, propertyRecords, block);
+        block.getType().onPropertyDelete(this, primitiveProxy, propertyKey, propertyRecords, block);
         ////
 
         for (DynamicRecord valueRecord : block.getValueRecords()) {

@@ -18,8 +18,8 @@ import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.newapi.DefaultPropertyCursor
 import org.neo4j.kernel.impl.store.PropertyType
 import org.neo4j.kernel.impl.store.record.{PrimitiveRecord, PropertyBlock, PropertyRecord}
-import org.neo4j.kernel.impl.transaction.state.RecordAccess
 import org.neo4j.kernel.impl.transaction.state.RecordAccess.RecordProxy
+import org.neo4j.kernel.impl.transaction.state.{PropertyDeleter, RecordAccess}
 import org.neo4j.values.AnyValue
 import org.neo4j.values.storable._
 
@@ -45,7 +45,7 @@ object BlobIO extends Logging {
   def encodeBlob(blob: Blob, trsa: TransactionRecordStateAware): Array[Byte] = {
     val baos = new ByteArrayOutputStream();
     val blobId = blobIdFactory.create();
-    _wrapBlobValueAsLongArray(blob, blobId, 0).foreach { x =>
+    _wrapBlobAsLongArray(blob, blobId, 0).foreach { x =>
       baos.writeLong(x);
     };
 
@@ -66,9 +66,9 @@ object BlobIO extends Logging {
     def writeBytes(bs: Array[Byte]);
   }
 
-  private def _writeBlobValueIntoBoltStream(blob: Blob, out: PackOutputInterface, useInlineAlways: Boolean): Unit = {
+  private def _writeBlobIntoBoltStream(blob: Blob, out: PackOutputInterface, useInlineAlways: Boolean): Unit = {
     //create blodid
-    val blobId = blobIdFactory.create();
+    val tempBlobId = blobIdFactory.create();
     val inline = useInlineAlways || (blob.length <= MAX_INLINE_BLOB_BYTES);
     //write marker
     out.writeByte(if (inline) {
@@ -78,7 +78,7 @@ object BlobIO extends Logging {
       BOLT_VALUE_TYPE_BLOB_REMOTE
     });
 
-    _wrapBlobValueAsLongArray(blob, blobId).foreach(out.writeLong(_));
+    _wrapBlobAsLongArray(blob, tempBlobId).foreach(out.writeLong(_));
 
     //write inline
     if (inline) {
@@ -88,22 +88,21 @@ object BlobIO extends Logging {
     else {
       //write as a HTTP resource
       val config: Config = ThreadVars.get[Config]("config");
-      val httpConnectorUrl: String = config.asInstanceOf[GraphServiceContext].contextGet("blob.server.connector.url").asInstanceOf[String];
+      val httpConnectorUrl: String = config.asInstanceOf[RuntimeContext].contextGet("blob.server.connector.url").asInstanceOf[String];
       //http://localhost:1224/blob
       val bs = httpConnectorUrl.getBytes("utf-8");
       out.writeInt(bs.length);
       out.writeBytes(bs);
-      BlobCacheInSession.put(blobId, blob);
+      BlobCacheInSession.put(tempBlobId, blob);
     }
   }
 
-
-  def writeBlobValue(blob: Blob, packer: PackStream.Packer): Unit = {
-    writeBlobValue(blob, packer._get("out").asInstanceOf[org.neo4j.driver.internal.packstream.PackOutput])
+  def writeBlob(blob: Blob, packer: PackStream.Packer): Unit = {
+    writeBlob(blob, packer._get("out").asInstanceOf[org.neo4j.driver.internal.packstream.PackOutput])
   }
 
-  def writeBlobValue(blob: Blob, out: org.neo4j.driver.internal.packstream.PackOutput): Unit = {
-    _writeBlobValueIntoBoltStream(blob, new PackOutputInterface() {
+  def writeBlob(blob: Blob, out: org.neo4j.driver.internal.packstream.PackOutput): Unit = {
+    _writeBlobIntoBoltStream(blob, new PackOutputInterface() {
       override def writeByte(b: Byte): Unit = out.writeByte(b);
 
       override def writeInt(i: Int): Unit = out.writeInt(i);
@@ -114,8 +113,8 @@ object BlobIO extends Logging {
     }, true);
   }
 
-  def writeBlobValue(blob: Blob, out: org.neo4j.bolt.v1.packstream.PackOutput): Unit = {
-    _writeBlobValueIntoBoltStream(blob, new PackOutputInterface() {
+  def writeBlob(blob: Blob, out: org.neo4j.bolt.v1.packstream.PackOutput): Unit = {
+    _writeBlobIntoBoltStream(blob, new PackOutputInterface() {
       override def writeByte(b: Byte): Unit = out.writeByte(b);
 
       override def writeInt(i: Int): Unit = out.writeInt(i);
@@ -138,14 +137,14 @@ object BlobIO extends Logging {
     def readLong(): Long;
   }
 
-  private def _readBlobValueFromBoltStreamIfAvailable(in: PackInputInterface): Blob = {
+  private def _readBlobFromBoltStreamIfAvailable(in: PackInputInterface): Blob = {
     val byte = in.peekByte();
     byte match {
       case BOLT_VALUE_TYPE_BLOB_REMOTE =>
         in.readByte();
 
         val values = for (i <- 0 to 3) yield in.readLong();
-        val (bid, length, mt) = _unpackBlobValue(values.toArray);
+        val (bid, length, mt) = _unpackBlob(values.toArray);
 
         val lengthUrl = in.readInt();
         val bs = new Array[Byte](lengthUrl);
@@ -158,7 +157,7 @@ object BlobIO extends Logging {
         in.readByte();
 
         val values = for (i <- 0 to 3) yield in.readLong();
-        val (_, length, mt) = _unpackBlobValue(values.toArray);
+        val (_, length, mt) = _unpackBlob(values.toArray);
 
         //read inline
         val bs = new Array[Byte](length.toInt);
@@ -169,9 +168,9 @@ object BlobIO extends Logging {
     }
   }
 
-  def readBlobValueFromBoltStreamIfAvailable(unpacker: PackStream.Unpacker): Value = {
+  def readBlobFromBoltStreamIfAvailable(unpacker: PackStream.Unpacker): Value = {
     val in = unpacker._get("in").asInstanceOf[org.neo4j.driver.internal.packstream.PackInput];
-    val blob = _readBlobValueFromBoltStreamIfAvailable(new PackInputInterface() {
+    val blob = _readBlobFromBoltStreamIfAvailable(new PackInputInterface() {
       def peekByte(): Byte = in.peekByte();
 
       def readByte(): Byte = in.readByte();
@@ -189,9 +188,9 @@ object BlobIO extends Logging {
       new BoltBlobValue(blob);
   }
 
-  def readBlobValueFromBoltStreamIfAvailable(unpacker: org.neo4j.bolt.v1.packstream.PackStream.Unpacker): AnyValue = {
+  def readBlobFromBoltStreamIfAvailable(unpacker: org.neo4j.bolt.v1.packstream.PackStream.Unpacker): AnyValue = {
     val in = unpacker._get("in").asInstanceOf[org.neo4j.bolt.v1.packstream.PackInput];
-    val blob = _readBlobValueFromBoltStreamIfAvailable(new PackInputInterface() {
+    val blob = _readBlobFromBoltStreamIfAvailable(new PackInputInterface() {
       def peekByte(): Byte = in.peekByte();
 
       def readByte(): Byte = in.readByte();
@@ -209,7 +208,7 @@ object BlobIO extends Logging {
       new BlobValue(blob);
   }
 
-  private def _wrapBlobValueAsLongArray(blob: Blob, blobId: BlobId, keyId: Int = 0): Array[Long] = {
+  private def _wrapBlobAsLongArray(blob: Blob, blobId: BlobId, keyId: Int = 0): Array[Long] = {
     val values = new Array[Long](4);
     //val digest = ByteArrayUtils.convertByteArray2LongArray(blob.digest);
     /*
@@ -229,7 +228,7 @@ object BlobIO extends Logging {
     values;
   }
 
-  private def _writeBlobValue(blob: Blob, blobId: BlobId, valueWriter: ValueWriter[_])(extraOp: => Unit) = {
+  private def _writeBlob(blob: Blob, blobId: BlobId, valueWriter: ValueWriter[_])(extraOp: => Unit) = {
     val keyId = valueWriter._get("keyId").asInstanceOf[Int];
     val block = valueWriter._get("block").asInstanceOf[PropertyBlock];
 
@@ -237,18 +236,15 @@ object BlobIO extends Logging {
 
     //valueWriter: org.neo4j.kernel.impl.store.PropertyStore.PropertyBlockValueWriter
     //setSingleBlockValue(block, keyId, PropertyType.INT, value)
-    block.setValueBlocks(_wrapBlobValueAsLongArray(blob, blobId, keyId));
+    block.setValueBlocks(_wrapBlobAsLongArray(blob, blobId, keyId));
   }
 
   def saveBlob(blob: Blob, valueWriter: ValueWriter[_]) = {
     val blobId = blobIdFactory.create();
-    _writeBlobValue(blob, blobId, valueWriter) {
-      valueWriter._get("stringAllocator").asInstanceOf[TransactionRecordStateAware].recordState.asInstanceOf[TransactionRecordStateExtension].addBlob(blobId, blob);
-      /*
-      val conf = valueWriter._get("stringAllocator.idGenerator.source.configuration").asInstanceOf[Config];
-      val storage: BlobStorage = conf.asInstanceOf[RuntimeContextHolder].getRuntimeContext[BlobPropertyStoreService]().getBlobStorage;
-      storage.save(blobId, blob)
-      */
+    _writeBlob(blob, blobId, valueWriter) {
+
+      valueWriter._get("stringAllocator").asInstanceOf[TransactionRecordStateAware]
+        .recordState.asInstanceOf[TransactionRecordStateExtension].transactionalBlobBuffer.prepare2AddBlob(blobId, blob);
     };
   }
 
@@ -256,7 +252,7 @@ object BlobIO extends Logging {
     _readBlobValue(values, cursor._get("read.properties.configuration").asInstanceOf[Config]);
   }
 
-  def _unpackBlobValue(values: Array[Long]): (BlobId, Long, MimeType) = {
+  def _unpackBlob(values: Array[Long]): (BlobId, Long, MimeType) = {
     //val keyId = PropertyBlock.keyIndexId(values(0));
     val length = values(1) >> 16;
     val mimeType = values(1) & 0xFFFFL;
@@ -267,8 +263,8 @@ object BlobIO extends Logging {
   }
 
   def _readBlobValue(values: Array[Long], conf: Config): BlobValue = {
-    val (bid, length, mt) = _unpackBlobValue(values);
-    val storage: BlobStorage = conf.asInstanceOf[GraphServiceContext].contextGet[BlobPropertyStoreService]().blobStorage;
+    val (bid, length, mt) = _unpackBlob(values);
+    val storage: BlobStorage = conf.asInstanceOf[RuntimeContext].contextGet[BlobPropertyStoreService]().blobStorage;
     val loaded = storage.loadBatch(Array(bid)).head;
     val blob = Blob.fromInputStreamSource(loaded.get.streamSource, length, Some(mt));
     new BlobValue(Blob.withStoreId(blob, bid));
@@ -278,19 +274,18 @@ object BlobIO extends Logging {
     _readBlobValue(block.getValueBlocks(), conf);
   }
 
-  def onPropertyDelete(primitiveProxy: RecordProxy[_, Void],
-                       propertyKey: Int,
-                       propertyRecords: RecordAccess[PropertyRecord, PrimitiveRecord],
-                       block: PropertyBlock): Unit = {
+  def prepare2DeleteBlobProperty(deleter: PropertyDeleter, primitiveProxy: RecordProxy[_, Void],
+                                 propertyKey: Int,
+                                 propertyRecords: RecordAccess[PropertyRecord, PrimitiveRecord],
+                                 block: PropertyBlock): Unit = {
     val values = block.getValueBlocks;
     val length = values(1) >> 16;
     //val digest = ByteArrayUtils.convertLongArray2ByteArray(Array(values(2), values(3)));
-    val conf = propertyRecords._get("loader.val$store.configuration").asInstanceOf[Config];
+    val state = deleter.asInstanceOf[TransactionRecordStateAware].recordState.asInstanceOf[TransactionRecordStateExtension];
+    val conf = state._get("nodeStore.configuration").asInstanceOf[Config];
     val bid = blobIdFactory.fromLongArray(values(2), values(3));
-
-    //TODO: delete blob?
-    val bids = bid.asLiteralString();
-    logger.debug(s"deleting blob: $bids");
+    //soft delete
+    state.transactionalBlobBuffer.prepare2DeleteBlob(bid);
   }
 }
 

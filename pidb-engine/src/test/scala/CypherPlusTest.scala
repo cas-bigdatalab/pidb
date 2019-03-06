@@ -14,16 +14,16 @@ class CypherPlusTest {
 
     Assert.assertEquals(true, db.execute("return Blob.empty() ~:0.5 Blob.empty() as r").next().get("r").asInstanceOf[Boolean]);
     Assert.assertEquals(true, db.execute("return Blob.empty() ~:0.5 Blob.empty() as r").next().get("r").asInstanceOf[Boolean]);
-    Assert.assertEquals(true, db.execute("return Blob.empty() ~:1 Blob.empty() as r").next().get("r").asInstanceOf[Boolean]);
+    Assert.assertEquals(true, db.execute("return Blob.empty() ~:1.0 Blob.empty() as r").next().get("r").asInstanceOf[Boolean]);
 
     Assert.assertEquals(true, db.execute("return Blob.empty() ~: Blob.empty() as r").next().get("r").asInstanceOf[Boolean]);
 
     Assert.assertEquals(true, db.execute(
       """return Blob.fromFile('/Users/bluejoe/Pictures/similarity_test_1.png')
-      like Blob.fromFile('/Users/bluejoe/Pictures/similarity_test_2.png') as r""")
+      ~: Blob.fromFile('/Users/bluejoe/Pictures/similarity_test_2.png') as r""")
       .next().get("r").asInstanceOf[Boolean]);
 
-    Assert.assertEquals(true, db.execute("""return Blob.fromFile('/Users/bluejoe/Pictures/1.jpeg') like '.*NB666.*' as r""")
+    Assert.assertEquals(true, db.execute("""return Blob.fromFile('/Users/bluejoe/Pictures/1.jpeg') ~: '.*NB666.*' as r""")
       .next().get("r").asInstanceOf[Boolean]);
 
     tx.success();

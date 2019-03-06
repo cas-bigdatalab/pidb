@@ -6,7 +6,7 @@ import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.store.DynamicRecordAllocator
 import org.neo4j.kernel.impl.store.id.IdSequence
 import org.neo4j.kernel.impl.store.record.DynamicRecord
-import org.neo4j.kernel.impl.transaction.state.{PropertyCreator, PropertyTraverser, TransactionRecordState}
+import org.neo4j.kernel.impl.transaction.state.{PropertyDeleter, PropertyCreator, PropertyTraverser, TransactionRecordState}
 
 /**
   * Created by bluejoe on 2019/3/3.
@@ -29,10 +29,14 @@ class TransactionalDynamicRecordAllocator(val recordState: TransactionRecordStat
   override def getRecordDataSize: Int = raw.getRecordDataSize
 }
 
+class TransactionalPropertyDeleter(val recordState: TransactionRecordState, val raw: PropertyDeleter)
+  extends PropertyDeleter(raw._get("traverser").asInstanceOf[PropertyTraverser]) with TransactionRecordStateAware{
+}
+
 trait TransactionRecordStateAware {
   val recordState: TransactionRecordState;
 
-  lazy val config = recordState._get("neoStores.config").asInstanceOf[Config]
+  lazy val config = recordState._get("nodeStore.configuration").asInstanceOf[Config]
 
-  lazy val blobPropertyStoreService: BlobPropertyStoreService = config.asInstanceOf[GraphServiceContext].getBlobPropertyStoreService;
+  lazy val blobPropertyStoreService: BlobPropertyStoreService = config.asInstanceOf[RuntimeContext].getBlobPropertyStoreService;
 }

@@ -6,26 +6,17 @@ import javax.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
 import cn.pidb.blob._
 import cn.pidb.blob.storage.{BlobStorage, RollbackCommand}
 import cn.pidb.engine.blob._
-import cn.pidb.engine.blob.extensions.{GraphServiceContext, TransactionRecordStateAware}
+import cn.pidb.engine.blob.extensions.RuntimeContext
 import cn.pidb.engine.cypherplus.CypherPluginRegistry
 import cn.pidb.util.ConfigurationEx._
-import cn.pidb.util.ReflectUtils._
 import cn.pidb.util.StreamUtils._
 import cn.pidb.util.{Configuration, Logging, Neo2JavaValueMapper}
 import org.apache.commons.io.IOUtils
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.servlet.{ServletContextHandler, ServletHolder}
-import org.neo4j.bolt.v1.messaging.Neo4jPack
-import org.neo4j.cypher.internal.runtime.interpreted.UpdateCountingQueryContext
-import org.neo4j.cypher.internal.runtime.interpreted.pipes.QueryState
-import org.neo4j.driver.internal.packstream.PackStream
 import org.neo4j.kernel.configuration.Config
-import org.neo4j.kernel.impl.newapi.DefaultPropertyCursor
 import org.neo4j.kernel.impl.proc.{Procedures, TypeMappers}
-import org.neo4j.kernel.impl.store.record.{PrimitiveRecord, PropertyRecord}
-import org.neo4j.kernel.impl.transaction.state.RecordAccess
 import org.neo4j.kernel.lifecycle.Lifecycle
-import org.neo4j.values.storable.ValueWriter
 import org.springframework.context.support.FileSystemXmlApplicationContext
 
 import scala.collection.mutable
@@ -34,8 +25,8 @@ import scala.collection.mutable
   * Created by bluejoe on 2018/11/29.
   */
 class BlobPropertyStoreService(storeDir: File, conf: Config, proceduresService: Procedures)
-extends Lifecycle with Logging {
-  val graphServiceContext: GraphServiceContext = conf.asInstanceOf[GraphServiceContext];
+  extends Lifecycle with Logging {
+  val runtimeContext: RuntimeContext = conf.asInstanceOf[RuntimeContext];
   val blobIdFactory = BlobIdFactory.get
   val configuration = new Configuration() {
     override def getRaw(name: String): Option[String] = {
@@ -49,7 +40,7 @@ extends Lifecycle with Logging {
     }
   }
 
-  conf.asInstanceOf[GraphServiceContext].contextPut[BlobPropertyStoreService](this);
+  conf.asInstanceOf[RuntimeContext].contextPut[BlobPropertyStoreService](this);
 
   val blobStorage: BlobStorage = configuration.getRaw("blob.storage")
     .map(Class.forName(_).newInstance().asInstanceOf[BlobStorage])
@@ -108,7 +99,7 @@ extends Lifecycle with Logging {
       val hostName = configuration.getValueAsString("blob.http.host", "localhost");
       val httpUrl = s"http://$hostName:${httpPort}$servletPath";
 
-      conf.asInstanceOf[GraphServiceContext].contextPut("blob.server.connector.url", httpUrl);
+      conf.asInstanceOf[RuntimeContext].contextPut("blob.server.connector.url", httpUrl);
       blobServer.start();
       blobServer;
     }

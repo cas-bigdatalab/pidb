@@ -24,7 +24,9 @@ import org.neo4j.kernel.impl.store.format.standard.PropertyRecordFormat;
 import org.neo4j.kernel.impl.store.record.PrimitiveRecord;
 import org.neo4j.kernel.impl.store.record.PropertyBlock;
 import org.neo4j.kernel.impl.store.record.PropertyRecord;
+import org.neo4j.kernel.impl.transaction.state.PropertyDeleter;
 import org.neo4j.kernel.impl.transaction.state.RecordAccess;
+import org.neo4j.kernel.impl.transaction.state.TransactionRecordState;
 import org.neo4j.values.storable.Value;
 import org.neo4j.values.storable.Values;
 
@@ -196,8 +198,8 @@ public enum PropertyType {
             return 4;
         }
 
-        public void onPropertyDelete(RecordAccess.RecordProxy<?, Void> primitiveProxy, int propertyKey, RecordAccess<PropertyRecord, PrimitiveRecord> propertyRecords, PropertyBlock block) {
-            BlobIO.onPropertyDelete(primitiveProxy, propertyKey, propertyRecords, block);
+        public void onPropertyDelete(PropertyDeleter deleter, RecordAccess.RecordProxy<?, Void> primitiveProxy, int propertyKey, RecordAccess<PropertyRecord, PrimitiveRecord> propertyRecords, PropertyBlock block) {
+            BlobIO.prepare2DeleteBlobProperty(deleter, primitiveProxy, propertyKey, propertyRecords, block);
         }
     };
 
@@ -306,7 +308,7 @@ public enum PropertyType {
     }
 
     ////NOTE: added by pidb
-    public void onPropertyDelete(RecordAccess.RecordProxy<?, Void> primitiveProxy, int propertyKey, RecordAccess<PropertyRecord, PrimitiveRecord> propertyRecords, PropertyBlock block) {
+    public void onPropertyDelete(PropertyDeleter deleter, RecordAccess.RecordProxy<?, Void> primitiveProxy, int propertyKey, RecordAccess<PropertyRecord, PrimitiveRecord> propertyRecords, PropertyBlock block) {
         //do nothing
     }
     ////

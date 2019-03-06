@@ -7,7 +7,7 @@ import scala.collection.mutable.{Map => MMap}
 /**
   * Created by bluejoe on 2018/8/12.
   */
-class GraphServiceContext {
+class RuntimeContext {
   private val _map = MMap[String, Any]();
 
   def contextPut(key: String, value: Any) = _map(key) = value;

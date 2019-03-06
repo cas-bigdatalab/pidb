@@ -20,9 +20,7 @@
 package org.neo4j.bolt.v1.messaging;
 
 import cn.pidb.blob.Blob;
-import cn.pidb.engine.BlobPropertyStoreService;
 import cn.pidb.engine.blob.BlobIO;
-import cn.pidb.engine.blob.BlobIO$;
 import org.neo4j.bolt.messaging.StructType;
 import org.neo4j.bolt.v1.packstream.PackInput;
 import org.neo4j.bolt.v1.packstream.PackOutput;
@@ -293,7 +291,7 @@ public class Neo4jPackV1 implements Neo4jPack {
         //NOTE: blob
         @Override
         public void writeBlob(Blob blob) throws IOException {
-            BlobIO.writeBlobValue(blob, this.out);
+            BlobIO.writeBlob(blob, this.out);
         }
 
         @Override
@@ -382,7 +380,7 @@ public class Neo4jPackV1 implements Neo4jPack {
         @Override
         public AnyValue unpack() throws IOException {
             //NOTE: blob support
-            AnyValue blobValue = BlobIO.readBlobValueFromBoltStreamIfAvailable(this);
+            AnyValue blobValue = BlobIO.readBlobFromBoltStreamIfAvailable(this);
             if (blobValue != null)
                 return blobValue;
 

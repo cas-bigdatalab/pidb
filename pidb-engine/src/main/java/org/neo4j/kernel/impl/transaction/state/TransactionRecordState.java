@@ -21,6 +21,7 @@ package org.neo4j.kernel.impl.transaction.state;
 
 import cn.pidb.engine.blob.extensions.TransactionRecordStateExtension;
 import cn.pidb.engine.blob.extensions.TransactionalPropertyCreator;
+import cn.pidb.engine.blob.extensions.TransactionalPropertyDeleter;
 import org.neo4j.internal.kernel.api.exceptions.TransactionFailureException;
 import org.neo4j.kernel.api.KernelTransaction;
 import org.neo4j.kernel.impl.core.RelationshipTypeToken;
@@ -99,7 +100,7 @@ public class TransactionRecordState extends TransactionRecordStateExtension impl
         this.relationshipCreator = relationshipCreator;
         this.relationshipDeleter = relationshipDeleter;
         this.propertyCreator = new TransactionalPropertyCreator(this, propertyCreator);
-        this.propertyDeleter = propertyDeleter;
+        this.propertyDeleter = new TransactionalPropertyDeleter(this, propertyDeleter);
     }
 
     @Override
