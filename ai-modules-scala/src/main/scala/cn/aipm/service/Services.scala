@@ -5,6 +5,9 @@ import java.io.InputStream
 import scala.collection.immutable.Map
 import scala.util.parsing.json.JSON
 
+import cn.pidb.blob.AnyComparator
+import cn.pidb.util.Configuration
+import cn.pidb.util.ConfigurationEx._
 
 
 class Services(private val _aipmHttpHostUrl:String) {
@@ -27,7 +30,7 @@ class Services(private val _aipmHttpHostUrl:String) {
     }
   }
 
-  //TOOD: extract a common function with user-defined input/output paramenters
+  //TODO: extract a common function with user-defined input/output parameters
   def computeFaceSimilarity(img1InputStream:InputStream,img2InputStream:InputStream): List[List[Double]]={
     val serviceUrl = getServiceUrl("FaceSim")
 
@@ -129,8 +132,14 @@ class Services(private val _aipmHttpHostUrl:String) {
 
 }
 
-object Services{
-  //TOOD: caching?
-  //TODO: rename initialize--> create?
-  def initialize(aipmHttpHostUrl:String):Services = new Services(aipmHttpHostUrl)
+/**
+*/
+trait ServiceInitializer extends AnyComparator {
+  var service:Services = null
+
+  override def initialize(conf: Configuration): Unit = {
+    val aipmHttpHostUrl = conf.getRequiredValueAsString("aipm.http.host.url")
+    service = new Services(aipmHttpHostUrl)
+  }
+
 }

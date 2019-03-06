@@ -1,18 +1,15 @@
 package cn.aipm.image
 
 import cn.pidb.blob._
-import cn.aipm.service.Services
-import cn.pidb.util.Configuration
-import cn.pidb.util.ConfigurationEx._
+import cn.aipm.service.ServiceInitializer
 
 
-class FaceSimilarityComparator extends SetComparator {
-  var aipmHttpHostUrl = "http://127.0.0.1/"
+class FaceSimilarityComparator extends SetComparator with ServiceInitializer {
 
   def compareAsSets(blob1: Any, blob2: Any): Array[Array[Double]] = {
     blob1.asInstanceOf[Blob].offerStream(is1=>{
       blob2.asInstanceOf[Blob].offerStream(is2=>{
-        val temp = Services.initialize(aipmHttpHostUrl).computeFaceSimilarity(is1,is2)
+        val temp = service.computeFaceSimilarity(is1,is2)
         if (temp != null){
           val arr:Array[Array[Double]] = new Array[Array[Double]](temp.size)
           var i:Int = 0
@@ -31,7 +28,4 @@ class FaceSimilarityComparator extends SetComparator {
 
   }
 
-  override def initialize(conf: Configuration): Unit = {
-    aipmHttpHostUrl = conf.getRequiredValueAsString("aipm.http.host.url")
-  }
 }
