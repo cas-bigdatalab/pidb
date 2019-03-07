@@ -19,7 +19,7 @@
  */
 package org.neo4j.kernel.impl.scheduler;
 
-import cn.pidb.engine.ThreadVars;
+import cn.pidb.engine.ThreadBoundContext;
 import org.neo4j.helpers.Exceptions;
 import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.lifecycle.LifecycleAdapter;
@@ -107,8 +107,13 @@ public class CentralJobScheduler extends LifecycleAdapter implements JobSchedule
         return new ThreadFactory() {
             @Override
             public Thread newThread(Runnable r) {
-                Thread t = src.newThread(r);
-                ThreadVars.put("config", config, t);
+                Thread t = src.newThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ThreadBoundContext.bindConf(config);
+                        r.run();
+                    }
+                });
                 return t;
             }
         };

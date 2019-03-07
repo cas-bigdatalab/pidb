@@ -44,7 +44,7 @@ class LocalPidbTest extends TestBase {
         IOUtils.toByteArray(_)
       });
 
-    Assert.assertArrayEquals(IOUtils.toByteArray(new FileInputStream(new File("./test1.png"))),
+    Assert.assertArrayEquals(IOUtils.toByteArray(new FileInputStream(new File("./test.png"))),
       blob2(1).offerStream {
         IOUtils.toByteArray(_)
       });
@@ -80,7 +80,7 @@ class LocalPidbTest extends TestBase {
         IOUtils.toByteArray(_)
       });
 
-    Assert.assertArrayEquals(IOUtils.toByteArray(new FileInputStream(new File("./test1.png"))),
+    Assert.assertArrayEquals(IOUtils.toByteArray(new FileInputStream(new File("./test.png"))),
       blob22(1).offerStream {
         IOUtils.toByteArray(_)
       });

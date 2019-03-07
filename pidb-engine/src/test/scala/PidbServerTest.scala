@@ -57,7 +57,7 @@ class PidbServerTest extends TestBase {
         blob22.get(0).asInstanceOf[Blob].offerStream {
           IOUtils.toByteArray(_)
         });
-      Assert.assertArrayEquals(IOUtils.toByteArray(new FileInputStream(new File("./test1.png"))),
+      Assert.assertArrayEquals(IOUtils.toByteArray(new FileInputStream(new File("./test.png"))),
         blob22.get(1).asInstanceOf[Blob].offerStream {
           IOUtils.toByteArray(_)
         });

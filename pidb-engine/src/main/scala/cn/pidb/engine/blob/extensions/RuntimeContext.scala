@@ -1,6 +1,6 @@
 package cn.pidb.engine.blob.extensions
 
-import cn.pidb.engine.{BlobPropertyStoreService}
+import cn.pidb.engine.BlobPropertyStoreService
 
 import scala.collection.mutable.{Map => MMap}
 
@@ -10,13 +10,20 @@ import scala.collection.mutable.{Map => MMap}
 class RuntimeContext {
   private val _map = MMap[String, Any]();
 
-  def contextPut(key: String, value: Any) = _map(key) = value;
+  def contextPut[T](key: String, value: T): T = {
+    _map(key) = value
+    value
+  };
 
-  def contextPut[T](value: Any)(implicit manifest: Manifest[T]) = _map(manifest.runtimeClass.getName) = value;
+  def contextPut[T](value: T)(implicit manifest: Manifest[T]): T = contextPut[T](manifest.runtimeClass.getName, value)
 
-  def contextGet(key: String): Any = _map(key);
+  def contextGet[T](key: String): T = _map(key).asInstanceOf[T];
 
-  def contextGet[T]()(implicit manifest: Manifest[T]): T = _map(manifest.runtimeClass.getName).asInstanceOf[T];
+  def contextGetOption[T](key: String): Option[T] = _map.get(key).map(_.asInstanceOf[T]);
+
+  def contextGet[T]()(implicit manifest: Manifest[T]): T = contextGet(manifest.runtimeClass.getName);
+
+  def contextGetOption[T]()(implicit manifest: Manifest[T]): Option[T] = contextGetOption(manifest.runtimeClass.getName);
 
   def getBlobPropertyStoreService: BlobPropertyStoreService = contextGet[BlobPropertyStoreService];
 }

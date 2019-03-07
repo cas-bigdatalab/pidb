@@ -5,7 +5,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import cn.pidb.blob._
 import cn.pidb.blob.storage.BlobStorage
 import cn.pidb.engine.blob.extensions._
-import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService, ThreadVars}
+import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService, ThreadBoundContext}
 import cn.pidb.util.ReflectUtils._
 import cn.pidb.util.StreamUtils._
 import cn.pidb.util.{Logging, StreamUtils}
@@ -45,11 +45,12 @@ object BlobIO extends Logging {
   def encodeBlob(blob: Blob, trsa: TransactionRecordStateAware): Array[Byte] = {
     val baos = new ByteArrayOutputStream();
     val blobId = blobIdFactory.create();
-    _wrapBlobAsLongArray(blob, blobId, 0).foreach { x =>
-      baos.writeLong(x);
-    };
+    _wrapBlobEntryAsLongArray(blob, blobId, 0).foreach(baos.writeLong(_));
 
-    trsa.blobPropertyStoreService.blobStorage.saveBatch(Array(blobId -> blob))
+    //trsa.blobPropertyStoreService.blobStorage.saveBatch(Array(blobId -> blob))
+    trsa.recordState.asInstanceOf[TransactionRecordStateExtension]
+      .committedBlobBuffer.prepare2AddBlob(blobId, blob);
+
     baos.toByteArray;
   }
 
@@ -67,7 +68,7 @@ object BlobIO extends Logging {
   }
 
   private def _writeBlobIntoBoltStream(blob: Blob, out: PackOutputInterface, useInlineAlways: Boolean): Unit = {
-    //create blodid
+    //create a temp blodid
     val tempBlobId = blobIdFactory.create();
     val inline = useInlineAlways || (blob.length <= MAX_INLINE_BLOB_BYTES);
     //write marker
@@ -78,7 +79,8 @@ object BlobIO extends Logging {
       BOLT_VALUE_TYPE_BLOB_REMOTE
     });
 
-    _wrapBlobAsLongArray(blob, tempBlobId).foreach(out.writeLong(_));
+    //write blob entry
+    _wrapBlobEntryAsLongArray(blob, tempBlobId).foreach(out.writeLong(_));
 
     //write inline
     if (inline) {
@@ -87,13 +89,15 @@ object BlobIO extends Logging {
     }
     else {
       //write as a HTTP resource
-      val config: Config = ThreadVars.get[Config]("config");
+      val config: Config = ThreadBoundContext.config;
       val httpConnectorUrl: String = config.asInstanceOf[RuntimeContext].contextGet("blob.server.connector.url").asInstanceOf[String];
+      val bpss = config.asInstanceOf[RuntimeContext].getBlobPropertyStoreService;
       //http://localhost:1224/blob
       val bs = httpConnectorUrl.getBytes("utf-8");
       out.writeInt(bs.length);
       out.writeBytes(bs);
-      BlobCacheInSession.put(tempBlobId, blob);
+      config.asInstanceOf[RuntimeContext].contextGet[BlobCacheInSession].put(tempBlobId, blob);
+      ThreadBoundContext.recordState.asInstanceOf[TransactionRecordStateExtension].cachedStreams.add(tempBlobId);
     }
   }
 
@@ -208,7 +212,7 @@ object BlobIO extends Logging {
       new BlobValue(blob);
   }
 
-  private def _wrapBlobAsLongArray(blob: Blob, blobId: BlobId, keyId: Int = 0): Array[Long] = {
+  private def _wrapBlobEntryAsLongArray(blob: Blob, blobId: BlobId, keyId: Int = 0): Array[Long] = {
     val values = new Array[Long](4);
     //val digest = ByteArrayUtils.convertByteArray2LongArray(blob.digest);
     /*
@@ -236,15 +240,14 @@ object BlobIO extends Logging {
 
     //valueWriter: org.neo4j.kernel.impl.store.PropertyStore.PropertyBlockValueWriter
     //setSingleBlockValue(block, keyId, PropertyType.INT, value)
-    block.setValueBlocks(_wrapBlobAsLongArray(blob, blobId, keyId));
+    block.setValueBlocks(_wrapBlobEntryAsLongArray(blob, blobId, keyId));
   }
 
   def saveBlob(blob: Blob, valueWriter: ValueWriter[_]) = {
     val blobId = blobIdFactory.create();
     _writeBlob(blob, blobId, valueWriter) {
-
       valueWriter._get("stringAllocator").asInstanceOf[TransactionRecordStateAware]
-        .recordState.asInstanceOf[TransactionRecordStateExtension].transactionalBlobBuffer.prepare2AddBlob(blobId, blob);
+        .recordState.asInstanceOf[TransactionRecordStateExtension].committedBlobBuffer.prepare2AddBlob(blobId, blob);
     };
   }
 
@@ -285,7 +288,7 @@ object BlobIO extends Logging {
     val conf = state._get("nodeStore.configuration").asInstanceOf[Config];
     val bid = blobIdFactory.fromLongArray(values(2), values(3));
     //soft delete
-    state.transactionalBlobBuffer.prepare2DeleteBlob(bid);
+    state.committedBlobBuffer.prepare2DeleteBlob(bid);
   }
 }
 

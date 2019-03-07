@@ -47,7 +47,7 @@ class BlobPropertyStoreService(storeDir: File, conf: Config, proceduresService: 
     .getOrElse(createDefaultBlobStorage());
 
   private val _mapper = new Neo2JavaValueMapper(proceduresService.valueMapper().asInstanceOf[TypeMappers]);
-  private var _blobServer: HttpBlobServer = _;
+  private var _blobServer: TransactionalBlobStreamServer = _;
 
   val (valueMatcher, customPropertyProvider) = {
     val cypherPluginRegistry = configuration.getRaw("blob.plugins.conf").map(x => {
@@ -72,7 +72,8 @@ class BlobPropertyStoreService(storeDir: File, conf: Config, proceduresService: 
       appctx.getBean[CypherPluginRegistry](classOf[CypherPluginRegistry]);
     }).getOrElse(new CypherPluginRegistry());
 
-    (cypherPluginRegistry.createValueComparatorRegistry(configuration), cypherPluginRegistry.createCustomPropertyProvider(configuration));
+    (cypherPluginRegistry.createValueComparatorRegistry(configuration),
+      cypherPluginRegistry.createCustomPropertyProvider(configuration));
   }
 
   override def shutdown(): Unit = {
@@ -94,7 +95,7 @@ class BlobPropertyStoreService(storeDir: File, conf: Config, proceduresService: 
     _blobServer = if (!conf.enabledBoltConnectors().isEmpty) {
       val httpPort = configuration.getValueAsInt("blob.http.port", 1224);
       val servletPath = configuration.getValueAsString("blob.http.servletPath", "/blob");
-      val blobServer = new HttpBlobServer(httpPort, servletPath);
+      val blobServer = new TransactionalBlobStreamServer(this.conf, httpPort, servletPath);
       //set url
       val hostName = configuration.getValueAsString("blob.http.host", "localhost");
       val httpUrl = s"http://$hostName:${httpPort}$servletPath";
@@ -208,37 +209,57 @@ class BlobPropertyStoreService(storeDir: File, conf: Config, proceduresService: 
   }
 }
 
-//TODO: clear cache while session closed
-object BlobCacheInSession extends Logging {
-  val cache = mutable.Map[String, Blob]();
+class BlobCacheInSession(streamServer: TransactionalBlobStreamServer) extends Logging {
+
+  def start() {
+    new Thread(new Runnable {
+      override def run() {
+        val now = System.currentTimeMillis();
+        val ids = cache.filter(_._2._2 < now).map(_._1)
+        cache --= ids;
+        logger.debug(s"cached blobs expired: $ids");
+      }
+    }).start();
+  }
+
+  val EXPIRATION = 600000L;
+  val cache = mutable.Map[String, (Blob, Long)]();
 
   def put(key: BlobId, blob: Blob): Unit = {
     val s = key.asLiteralString();
-    cache(s) = blob;
-    logger.debug(s"BlobCacheInSession: $s");
+    cache(s) = blob -> (System.currentTimeMillis() + EXPIRATION);
   }
 
-  def invalidate(key: String) = {
-    cache.remove(key);
+  def invalidate(key: BlobId) = {
+    cache - (key.asLiteralString());
   }
 
-  def get(key: BlobId): Option[Blob] = cache.get(key.asLiteralString());
+  def invalidate(keys: Array[BlobId]) = {
+    val ids = keys.map(_.asLiteralString());
+    logger.debug(s"invalidating $ids");
+    cache --= ids;
+  }
 
-  def get(key: String): Option[Blob] = cache.get(key);
+  def get(key: BlobId): Option[Blob] = cache.get(key.asLiteralString()).map(_._1);
+
+  def get(key: String): Option[Blob] = cache.get(key).map(_._1);
 }
 
-class HttpBlobServer(httpPort: Int, servletPath: String) extends Logging {
+class TransactionalBlobStreamServer(conf: Config, httpPort: Int, servletPath: String) extends Logging {
   var _server: Server = _;
+  val blobCache: BlobCacheInSession =
+    conf.asInstanceOf[RuntimeContext].contextPut[BlobCacheInSession](new BlobCacheInSession(this));
 
   def start(): Unit = {
     _server = new Server(httpPort);
-    val blobStreamServlet = new BlobStreamServlet();
+    val blobStreamServlet = new StreamServlet();
     val context = new ServletContextHandler(ServletContextHandler.SESSIONS);
     context.setContextPath("/");
     _server.setHandler(context);
     //add servlet
     context.addServlet(new ServletHolder(blobStreamServlet), servletPath);
     _server.start();
+    blobCache.start();
 
     logger.info(s"blob server started on http://localhost:$httpPort$servletPath");
   }
@@ -247,10 +268,10 @@ class HttpBlobServer(httpPort: Int, servletPath: String) extends Logging {
     _server.stop();
   }
 
-  class BlobStreamServlet extends HttpServlet {
+  class StreamServlet extends HttpServlet {
     override def doGet(req: HttpServletRequest, resp: HttpServletResponse): Unit = {
       val blobId = req.getParameter("bid");
-      val opt = BlobCacheInSession.get(blobId);
+      val opt = blobCache.get(blobId);
       if (opt.isDefined) {
         resp.setContentType(opt.get.mimeType.text);
         resp.setContentLength(opt.get.length.toInt);
