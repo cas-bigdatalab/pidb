@@ -57,7 +57,7 @@ trait Storage extends BlobStorage with Logging {
 }
 
 // TODO ref
-//TODO: externalStorage?
+// TODO externalStorage?
 class HybridStorage(persistStorage: Storage, val buffer: Buffer) extends Storage {
 
   override def deleteBatch(bids: Iterable[BlobId]): RollbackCommand = {
@@ -97,8 +97,8 @@ class HybridStorage(persistStorage: Storage, val buffer: Buffer) extends Storage
 
 class HBaseStorage extends Storage {
   private var _table: Table = _
-  //FIXME: _conn?
-  private var conn: Connection = _
+  //FIXME: _conn? <- _table means this object can be created lightly
+  private var conn: Connection = _ //conn means don't create this object once more, it's time-consuming
 
   override def delete(bid: BlobId): RollbackCommand = {
     _table.delete(HBaseUtils.buildDelete(bid))
@@ -217,7 +217,7 @@ class FileStorage extends Storage with Bufferable {
     file.getParentFile.mkdirs()
 
     val fos = new FileOutputStream(file)
-    fos.write(bid.asByteArray)
+    fos.write(bid.asByteArray())
     fos.writeLong(blob.mimeType.code)
     fos.writeLong(blob.length)
 
