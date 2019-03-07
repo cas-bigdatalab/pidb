@@ -20,7 +20,7 @@
 package org.neo4j.kernel.impl.storageengine.impl.recordstorage;
 
 import cn.pidb.engine.blob.BlobFlushTransactionAppliers;
-import cn.pidb.engine.blob.BlobCollectorCommand;
+import cn.pidb.engine.blob.RecordStateCollectorCommand;
 import org.neo4j.concurrent.WorkSync;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.collection.Iterators;
@@ -271,7 +271,7 @@ public class RecordStorageEngine implements StorageEngine, Lifecycle {
             countsRecordState.extractCommands(commands);
 
             //NOTE: add blob support
-            commands.add(new BlobCollectorCommand(neoStores, txState, recordState));
+            commands.add(new RecordStateCollectorCommand(neoStores, txState, recordState));
         }
     }
 

@@ -61,7 +61,7 @@ class BlobArray(val blobs: Array[Blob]) extends AbstractBlobArray(blobs) {
   override def writeTo[E <: Exception](writer: ValueWriter[E]) {
     writer.beginArray(values.length, ValueWriter.ArrayType.BLOB)
     //TODO: batch writing
-    values.foreach(_.writeTo(writer));
+    blobs.foreach(writer.asInstanceOf[BlobValueWriter].writeBlob(_));
     writer.endArray
   }
 

@@ -19,7 +19,7 @@ class TransactionalBlobBuffer extends Logging {
     addedBlobs.filter(_.isInstanceOf[BlobAdd]).map(_.asInstanceOf[BlobAdd])
       .map(x => x.id -> x.blob).grouped(100).foreach(ops => {
       bpss.blobStorage.saveBatch(ops);
-      logger.debug(s"blobs saved: ${ops.map(_._2)}");
+      logger.debug(s"blobs saved: [${ops.map(_._2).mkString(", ")}]");
     }
     )
 
@@ -30,15 +30,24 @@ class TransactionalBlobBuffer extends Logging {
     val deleted = deletedBlobs.filter(_.isInstanceOf[BlobDelete]).map(_.asInstanceOf[BlobDelete].id);
     if (!deleted.isEmpty) {
       //bpss.blobStorage.deleteBatch(deleted);
-      logger.debug(s"blobs deleted: ${deleted.map(_.asLiteralString())}");
+      logger.debug(s"blobs deleted: [${deleted.map(_.asLiteralString()).mkString(", ")}]");
     }
 
     deletedBlobs.clear()
   }
 }
 
+class TransactionalCachedStreams {
+  val streamIds = ArrayBuffer[BlobId]();
+
+  def add(id: BlobId) = streamIds += id;
+
+  def ids = streamIds.toArray;
+}
+
 class TransactionRecordStateExtension {
-  val transactionalBlobBuffer = new TransactionalBlobBuffer();
+  val committedBlobBuffer = new TransactionalBlobBuffer();
+  val cachedStreams = new TransactionalCachedStreams();
 }
 
 trait BlobChange {
