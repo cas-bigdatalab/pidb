@@ -44,7 +44,7 @@ class BlobPropertyStoreService(storeDir: File, conf: Config, proceduresService: 
 
   val blobStorage: BlobStorage = configuration.getRaw("blob.storage")
     .map(Class.forName(_).newInstance().asInstanceOf[BlobStorage])
-    .getOrElse(createDefaultBlobStorage);
+    .getOrElse(createDefaultBlobStorage());
 
   private val _mapper = new Neo2JavaValueMapper(proceduresService.valueMapper().asInstanceOf[TypeMappers]);
   private var _blobServer: HttpBlobServer = _;
