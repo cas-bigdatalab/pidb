@@ -11,7 +11,7 @@ object putHbase {
 
     println(s"dir: $dir, number: $n")
     FileUtils.deleteDirectory(new File(dir))
-    val db = PidbConnector.openDatabase(new File(dir), new File("neo4j-hbase.conf"));
+    val db = PidbConnector.openDatabase(new File(dir), new File("pidb-engine/neo4j-hbase.conf"));
 
     println("start inserting blobs...")
     val start = System.currentTimeMillis()
@@ -22,7 +22,7 @@ object putHbase {
         val node = db.createNode()
         node.setProperty("id", j)
         //with a blob property
-        node.setProperty("photo", Blob.fromFile(new File("test.png")));
+        node.setProperty("photo", Blob.fromFile(new File("pidb-engine/test.png")));
       }
       tx.success()
       tx.close()
