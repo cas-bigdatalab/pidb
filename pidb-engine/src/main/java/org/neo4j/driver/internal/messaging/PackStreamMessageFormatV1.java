@@ -174,8 +174,9 @@ public class PackStreamMessageFormatV1 implements MessageFormat {
                     break;
 
                 //NOTE: blob
+                //driver, client-side
                 case BLOB:
-                    BlobIO.writeBlob(value.asBlob(), packer);
+                    packer.pack(value.asBlob());
                     break;
 
                 case BYTES:

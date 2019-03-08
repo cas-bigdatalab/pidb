@@ -5,11 +5,10 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import cn.pidb.blob._
 import cn.pidb.blob.storage.BlobStorage
 import cn.pidb.engine.blob.extensions._
-import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService, ThreadBoundContext}
+import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService}
 import cn.pidb.util.ReflectUtils._
 import cn.pidb.util.StreamUtils._
 import cn.pidb.util.{Logging, StreamUtils}
-import org.neo4j.driver.internal.packstream.PackStream
 import org.neo4j.driver.internal.types.{TypeConstructor, TypeRepresentation}
 import org.neo4j.driver.internal.value.ValueAdapter
 import org.neo4j.driver.v1.Value
@@ -27,8 +26,8 @@ import org.neo4j.values.storable._
   * Created by bluejoe on 2018/7/4.
   */
 object BlobIO extends Logging {
-  val BOLT_VALUE_TYPE_BLOB_INLINE = PackStream.RESERVED_C5;
-  val BOLT_VALUE_TYPE_BLOB_REMOTE = PackStream.RESERVED_C4;
+  val BOLT_VALUE_TYPE_BLOB_INLINE = org.neo4j.driver.internal.packstream.PackStream.RESERVED_C5;
+  val BOLT_VALUE_TYPE_BLOB_REMOTE = org.neo4j.driver.internal.packstream.PackStream.RESERVED_C4;
   val MAX_INLINE_BLOB_BYTES = 10240;
 
   val blobIdFactory = BlobIdFactory.get
@@ -67,7 +66,7 @@ object BlobIO extends Logging {
     def writeBytes(bs: Array[Byte]);
   }
 
-  private def _writeBlobIntoBoltStream(blob: Blob, out: PackOutputInterface, useInlineAlways: Boolean): Unit = {
+  private def _writeBlobIntoBoltStream(blob: Blob, out: PackOutputInterface, useInlineAlways: Boolean, config: Config): Unit = {
     //create a temp blodid
     val tempBlobId = blobIdFactory.create();
     val inline = useInlineAlways || (blob.length <= MAX_INLINE_BLOB_BYTES);
@@ -89,7 +88,7 @@ object BlobIO extends Logging {
     }
     else {
       //write as a HTTP resource
-      val config: Config = ThreadBoundContext.config;
+      //val config: Config = ThreadBoundContext.config;
       val httpConnectorUrl: String = config.asInstanceOf[RuntimeContext].contextGet("blob.server.connector.url").asInstanceOf[String];
       val bpss = config.asInstanceOf[RuntimeContext].getBlobPropertyStoreService;
       //http://localhost:1224/blob
@@ -97,36 +96,45 @@ object BlobIO extends Logging {
       out.writeInt(bs.length);
       out.writeBytes(bs);
       config.asInstanceOf[RuntimeContext].contextGet[BlobCacheInSession].put(tempBlobId, blob);
-      ThreadBoundContext.recordState.asInstanceOf[TransactionRecordStateExtension].cachedStreams.add(tempBlobId);
+      //ThreadBoundContext.recordState.asInstanceOf[TransactionRecordStateExtension].cachedStreams.add(tempBlobId);
     }
   }
 
-  def writeBlob(blob: Blob, packer: PackStream.Packer): Unit = {
-    writeBlob(blob, packer._get("out").asInstanceOf[org.neo4j.driver.internal.packstream.PackOutput])
+  def writeBlobArray(blob: Array[Blob], packer: org.neo4j.driver.internal.packstream.PackStream.Packer): Unit = {
+    //TOOD
+    throw new UnsupportedOperationException();
   }
 
-  def writeBlob(blob: Blob, out: org.neo4j.driver.internal.packstream.PackOutput): Unit = {
-    _writeBlobIntoBoltStream(blob, new PackOutputInterface() {
-      override def writeByte(b: Byte): Unit = out.writeByte(b);
+  def writeBlob(blob: Blob, packer: org.neo4j.driver.internal.packstream.PackStream.Packer): Unit = {
+    val out = packer._get("out").asInstanceOf[org.neo4j.driver.internal.packstream.PackOutput];
+    val out2 =
+      new PackOutputInterface() {
+        override def writeByte(b: Byte): Unit = out.writeByte(b);
 
-      override def writeInt(i: Int): Unit = out.writeInt(i);
+        override def writeInt(i: Int): Unit = out.writeInt(i);
 
-      override def writeBytes(bs: Array[Byte]): Unit = out.writeBytes(bs);
+        override def writeBytes(bs: Array[Byte]): Unit = out.writeBytes(bs);
 
-      override def writeLong(l: Long): Unit = out.writeLong(l);
-    }, true);
+        override def writeLong(l: Long): Unit = out.writeLong(l);
+      }
+
+    _writeBlobIntoBoltStream(blob, out2, true, packer.asInstanceOf[Neo4jConfigAware].getConfig);
   }
 
-  def writeBlob(blob: Blob, out: org.neo4j.bolt.v1.packstream.PackOutput): Unit = {
-    _writeBlobIntoBoltStream(blob, new PackOutputInterface() {
-      override def writeByte(b: Byte): Unit = out.writeByte(b);
+  def writeBlob(blob: Blob, packer: org.neo4j.bolt.v1.packstream.PackStream.Packer): Unit = {
+    val out = packer._get("out").asInstanceOf[org.neo4j.bolt.v1.packstream.PackOutput];
+    val out2 =
+      new PackOutputInterface() {
+        override def writeByte(b: Byte): Unit = out.writeByte(b);
 
-      override def writeInt(i: Int): Unit = out.writeInt(i);
+        override def writeInt(i: Int): Unit = out.writeInt(i);
 
-      override def writeBytes(bs: Array[Byte]): Unit = out.writeBytes(bs, 0, bs.length);
+        override def writeBytes(bs: Array[Byte]): Unit = out.writeBytes(bs, 0, bs.length);
 
-      override def writeLong(l: Long): Unit = out.writeLong(l);
-    }, false);
+        override def writeLong(l: Long): Unit = out.writeLong(l);
+      }
+
+    _writeBlobIntoBoltStream(blob, out2, true, packer.asInstanceOf[Neo4jConfigAware].getConfig);
   }
 
   trait PackInputInterface {
@@ -155,8 +163,10 @@ object BlobIO extends Logging {
         in.readBytes(bs, 0, lengthUrl);
 
         val url = new String(bs, "utf-8");
+        //TODO: reuse bolt session
         new RemoteBlob(url, bid, length, mt);
 
+      //no inline
       case BOLT_VALUE_TYPE_BLOB_INLINE =>
         in.readByte();
 
@@ -172,7 +182,7 @@ object BlobIO extends Logging {
     }
   }
 
-  def readBlobFromBoltStreamIfAvailable(unpacker: PackStream.Unpacker): Value = {
+  def readBlobFromBoltStreamIfAvailable(unpacker: org.neo4j.driver.internal.packstream.PackStream.Unpacker): Value = {
     val in = unpacker._get("in").asInstanceOf[org.neo4j.driver.internal.packstream.PackInput];
     val blob = _readBlobFromBoltStreamIfAvailable(new PackInputInterface() {
       def peekByte(): Byte = in.peekByte();

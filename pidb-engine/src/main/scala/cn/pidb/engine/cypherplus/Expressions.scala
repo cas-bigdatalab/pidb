@@ -209,7 +209,7 @@ trait Expressions extends Parser
       //TODO: http://xxx
       LeftArrowHead ~ ignoreCase("FILE://") ~ BlobURLPath ~ RightArrowHead
         ~~>> (x => BlobLiteralExpr(BlobFileURL(x)))
-        | LeftArrowHead ~ ignoreCase("BLOB://") ~ BlobURLPath ~ RightArrowHead
+        | LeftArrowHead ~ ignoreCase("BASE64://") ~ BlobURLPath ~ RightArrowHead
         ~~>> (x => BlobLiteralExpr(BlobBase64URL(x.mkString(""))))
         | LeftArrowHead ~ ignoreCase("INTERNAL://") ~ BlobURLPath ~ RightArrowHead
         ~~>> (x => BlobLiteralExpr(InternalUrl(x.mkString(""))))

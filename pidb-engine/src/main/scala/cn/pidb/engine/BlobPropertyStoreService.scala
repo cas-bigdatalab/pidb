@@ -216,8 +216,10 @@ class BlobCacheInSession(streamServer: TransactionalBlobStreamServer) extends Lo
       override def run() {
         val now = System.currentTimeMillis();
         val ids = cache.filter(_._2._2 < now).map(_._1)
-        cache --= ids;
-        logger.debug(s"cached blobs expired: $ids");
+        if (!ids.isEmpty) {
+          cache --= ids;
+          logger.debug(s"cached blobs expired: $ids");
+        }
       }
     }).start();
   }
@@ -245,6 +247,7 @@ class BlobCacheInSession(streamServer: TransactionalBlobStreamServer) extends Lo
   def get(key: String): Option[Blob] = cache.get(key).map(_._1);
 }
 
+//TODO: reuse BOLT session
 class TransactionalBlobStreamServer(conf: Config, httpPort: Int, servletPath: String) extends Logging {
   var _server: Server = _;
   val blobCache: BlobCacheInSession =

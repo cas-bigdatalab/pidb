@@ -1,12 +1,13 @@
 package cn.pidb.engine.blob.extensions
 
-import cn.pidb.engine.{BlobPropertyStoreService}
+import cn.pidb.engine.BlobPropertyStoreService
 import cn.pidb.util.ReflectUtils._
+import org.neo4j.graphdb.Node
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.store.DynamicRecordAllocator
 import org.neo4j.kernel.impl.store.id.IdSequence
 import org.neo4j.kernel.impl.store.record.DynamicRecord
-import org.neo4j.kernel.impl.transaction.state.{PropertyDeleter, PropertyCreator, PropertyTraverser, TransactionRecordState}
+import org.neo4j.kernel.impl.transaction.state.{PropertyCreator, PropertyDeleter, PropertyTraverser, TransactionRecordState}
 
 /**
   * Created by bluejoe on 2019/3/3.
@@ -30,7 +31,7 @@ class TransactionalDynamicRecordAllocator(val recordState: TransactionRecordStat
 }
 
 class TransactionalPropertyDeleter(val recordState: TransactionRecordState, val raw: PropertyDeleter)
-  extends PropertyDeleter(raw._get("traverser").asInstanceOf[PropertyTraverser]) with TransactionRecordStateAware{
+  extends PropertyDeleter(raw._get("traverser").asInstanceOf[PropertyTraverser]) with TransactionRecordStateAware {
 }
 
 trait TransactionRecordStateAware {
@@ -39,4 +40,14 @@ trait TransactionRecordStateAware {
   lazy val config = recordState._get("nodeStore.configuration").asInstanceOf[Config]
 
   lazy val blobPropertyStoreService: BlobPropertyStoreService = config.asInstanceOf[RuntimeContext].getBlobPropertyStoreService;
+}
+
+class Neo4jConfigAware {
+  private var _config: Config = null;
+
+  def getConfig: Config = _config;
+
+  def bindConfig(node: Node): Unit = bindConfig(node._get("spi.config").asInstanceOf[Config]);
+
+  def bindConfig(config: Config): Unit = _config = config;
 }

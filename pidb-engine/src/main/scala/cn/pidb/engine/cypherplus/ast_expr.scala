@@ -35,6 +35,7 @@ case class BlobBase64URL(base64: String) extends BlobURL {
 case class InternalUrl(blobId: String) extends BlobURL {
   override def asCanonicalString = blobId
 
+  //TODO: use bolt session
   def createBlob(bpss: BlobPropertyStoreService): Blob =
     bpss.blobStorage.loadBatch(Array(bpss.blobIdFactory.fromLiteralString(blobId))).head.get;
 }

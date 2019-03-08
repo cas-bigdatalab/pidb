@@ -45,10 +45,10 @@ object ThreadBoundContext extends Logging {
   */
   private val configLocal: ThreadLocal[Config] = new ThreadLocal[Config]();
 
-  def config = _get(configLocal);
+  //def config = _get(configLocal);
 
-  def recordState = _get(recordStateLocal);
+  //def recordState = _get(recordStateLocal);
 
-  def runtimeContext: RuntimeContext = configLocal.get().asInstanceOf[RuntimeContext];
+  //def runtimeContext: RuntimeContext = configLocal.get().asInstanceOf[RuntimeContext];
   private val recordStateLocal: ThreadLocal[TransactionRecordState] = new ThreadLocal[TransactionRecordState]();
 }
