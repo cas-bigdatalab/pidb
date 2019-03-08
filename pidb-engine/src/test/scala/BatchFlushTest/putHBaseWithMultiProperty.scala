@@ -1,41 +1,36 @@
 package BatchFlushTest
+
 import java.io.File
 
 import cn.pidb.blob.Blob
 import cn.pidb.engine.PidbConnector
 import org.apache.commons.io.FileUtils
 
-//capitalizes 1st letter
-object putHbase {
+object putHBaseWithMultiProperty {
   def main(args: Array[String]): Unit = {
     val dir = "target/tmp"
     val n: Int = 1
-
     println(s"dir: $dir, number: $n")
     FileUtils.deleteDirectory(new File(dir))
-    val db = PidbConnector.openDatabase(new File(dir), new File("pidb-engine/neo4j-hbase.conf"));
-
+    val db = PidbConnector.openDatabase(new File(dir), new File("pidb-engine/neo4j-hbase.conf"))
     println("start inserting blobs...")
     val start = System.currentTimeMillis()
     for (i <- 0 until n) {
       val tx = db.beginTx()
-      for (j <- 0 until 1000) {
+      val node = db.createNode()
+      for (j <- 0 until 1000) { // 1000 blob per point
         val node = db.createNode()
-        node.setProperty("id", j)
         //with a blob property
-        node.setProperty("photo", Blob.fromFile(new File("pidb-engine/test.png")));
+        node.setProperty(s"photo + $j", Blob.fromFile(new File("pidb-engine/test.png")))
       }
       tx.success()
       tx.close()
     }
-
-
     val end = System.currentTimeMillis()
     val elapse = end - start
-    println(elapse)
-    println(s"create about ${n * 1000} nodes, total cost $elapse ms")
-    println("each node costs : " + elapse / (1000 * n))
-
+    println(s"create about 1000 nodes, total cost $elapse ms")
+    println("each node costs : " + elapse / n)
+    println("each blob costs : " + elapse / (1000 * n))
     db.shutdown()
   }
 }
