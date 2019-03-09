@@ -37,17 +37,8 @@ class TransactionalBlobBuffer extends Logging {
   }
 }
 
-class TransactionalCachedStreams {
-  val streamIds = ArrayBuffer[BlobId]();
-
-  def add(id: BlobId) = streamIds += id;
-
-  def ids = streamIds.toArray;
-}
-
 class TransactionRecordStateExtension {
-  val committedBlobBuffer = new TransactionalBlobBuffer();
-  val cachedStreams = new TransactionalCachedStreams();
+  val uncommittedBlobBuffer = new TransactionalBlobBuffer();
 }
 
 trait BlobChange {

@@ -5,7 +5,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import cn.pidb.blob._
 import cn.pidb.blob.storage.BlobStorage
 import cn.pidb.engine.blob.extensions._
-import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService}
+import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService, ThreadBoundContext}
 import cn.pidb.util.ReflectUtils._
 import cn.pidb.util.StreamUtils._
 import cn.pidb.util.{Logging, StreamUtils}
@@ -48,7 +48,7 @@ object BlobIO extends Logging {
 
     //trsa.blobPropertyStoreService.blobStorage.saveBatch(Array(blobId -> blob))
     trsa.recordState.asInstanceOf[TransactionRecordStateExtension]
-      .committedBlobBuffer.prepare2AddBlob(blobId, blob);
+      .uncommittedBlobBuffer.prepare2AddBlob(blobId, blob);
 
     baos.toByteArray;
   }
@@ -66,7 +66,7 @@ object BlobIO extends Logging {
     def writeBytes(bs: Array[Byte]);
   }
 
-  private def _writeBlobIntoBoltStream(blob: Blob, out: PackOutputInterface, useInlineAlways: Boolean, config: Config): Unit = {
+  private def _writeBlobIntoBoltStream(blob: Blob, out: PackOutputInterface, useInlineAlways: Boolean): Unit = {
     //create a temp blodid
     val tempBlobId = blobIdFactory.create();
     val inline = useInlineAlways || (blob.length <= MAX_INLINE_BLOB_BYTES);
@@ -88,7 +88,7 @@ object BlobIO extends Logging {
     }
     else {
       //write as a HTTP resource
-      //val config: Config = ThreadBoundContext.config;
+      val config: Config = ThreadBoundContext.config;
       val httpConnectorUrl: String = config.asInstanceOf[RuntimeContext].contextGet("blob.server.connector.url").asInstanceOf[String];
       val bpss = config.asInstanceOf[RuntimeContext].getBlobPropertyStoreService;
       //http://localhost:1224/blob
@@ -105,7 +105,8 @@ object BlobIO extends Logging {
     throw new UnsupportedOperationException();
   }
 
-  def writeBlob(blob: Blob, packer: org.neo4j.driver.internal.packstream.PackStream.Packer): Unit = {
+  //client side?
+  def writeBlobOnBoltClientSide(blob: Blob, packer: org.neo4j.driver.internal.packstream.PackStream.Packer): Unit = {
     val out = packer._get("out").asInstanceOf[org.neo4j.driver.internal.packstream.PackOutput];
     val out2 =
       new PackOutputInterface() {
@@ -118,10 +119,10 @@ object BlobIO extends Logging {
         override def writeLong(l: Long): Unit = out.writeLong(l);
       }
 
-    _writeBlobIntoBoltStream(blob, out2, true, packer.asInstanceOf[Neo4jConfigAware].getConfig);
+    _writeBlobIntoBoltStream(blob, out2, true);
   }
 
-  def writeBlob(blob: Blob, packer: org.neo4j.bolt.v1.packstream.PackStream.Packer): Unit = {
+  def writeBlobOnBoltServerSide(blob: Blob, packer: org.neo4j.bolt.v1.packstream.PackStream.Packer): Unit = {
     val out = packer._get("out").asInstanceOf[org.neo4j.bolt.v1.packstream.PackOutput];
     val out2 =
       new PackOutputInterface() {
@@ -134,7 +135,7 @@ object BlobIO extends Logging {
         override def writeLong(l: Long): Unit = out.writeLong(l);
       }
 
-    _writeBlobIntoBoltStream(blob, out2, true, packer.asInstanceOf[Neo4jConfigAware].getConfig);
+    _writeBlobIntoBoltStream(blob, out2, false);
   }
 
   trait PackInputInterface {
@@ -257,7 +258,7 @@ object BlobIO extends Logging {
     val blobId = blobIdFactory.create();
     _writeBlob(blob, blobId, valueWriter) {
       valueWriter._get("stringAllocator").asInstanceOf[TransactionRecordStateAware]
-        .recordState.asInstanceOf[TransactionRecordStateExtension].committedBlobBuffer.prepare2AddBlob(blobId, blob);
+        .recordState.asInstanceOf[TransactionRecordStateExtension].uncommittedBlobBuffer.prepare2AddBlob(blobId, blob);
     };
   }
 
@@ -298,7 +299,7 @@ object BlobIO extends Logging {
     val conf = state._get("nodeStore.configuration").asInstanceOf[Config];
     val bid = blobIdFactory.fromLongArray(values(2), values(3));
     //soft delete
-    state.committedBlobBuffer.prepare2DeleteBlob(bid);
+    state.uncommittedBlobBuffer.prepare2DeleteBlob(bid);
   }
 }
 

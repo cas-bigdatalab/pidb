@@ -1,7 +1,7 @@
 package cn.pidb.engine.blob
 
 import cn.pidb.engine.blob.extensions.{RuntimeContext, TransactionRecordStateExtension}
-import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService}
+import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService, ThreadBoundContext}
 import cn.pidb.util.ReflectUtils._
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.api.{BatchTransactionApplier, CommandVisitor, TransactionApplier}
@@ -21,7 +21,7 @@ class RecordStateCollectorCommand(val neoStores: NeoStores, val txState: Readabl
   override def handle(handler: CommandVisitor): Boolean = {
     if (handler.isInstanceOf[BlobFlushTransactionApplier]) {
       val conf = neoStores._get("config").asInstanceOf[Config];
-      handler.asInstanceOf[BlobFlushTransactionApplier].bind(conf, recordState);
+      handler.asInstanceOf[BlobFlushTransactionApplier].collect(conf, recordState);
       true
     }
     else {
@@ -44,7 +44,7 @@ class BlobFlushTransactionAppliers() extends BatchTransactionApplier.Adapter {
 class BlobFlushTransactionApplier extends TransactionApplier.Adapter {
   val _recordStates = mutable.Set[(Config, TransactionRecordState)]();
 
-  def bind(conf: Config, recordState: TransactionRecordState) =
+  def collect(conf: Config, recordState: TransactionRecordState) =
     _recordStates += conf -> recordState;
 
   override def close(): Unit = {
@@ -52,12 +52,12 @@ class BlobFlushTransactionApplier extends TransactionApplier.Adapter {
       val (conf, recordState) = x;
 
       val bpss: BlobPropertyStoreService = conf.asInstanceOf[RuntimeContext].getBlobPropertyStoreService;
-      recordState.asInstanceOf[TransactionRecordStateExtension].committedBlobBuffer.flushAddedBlobs(bpss);
-      recordState.asInstanceOf[TransactionRecordStateExtension].committedBlobBuffer.flushDeletedBlobs(bpss);
+      recordState.asInstanceOf[TransactionRecordStateExtension].uncommittedBlobBuffer.flushAddedBlobs(bpss);
+      recordState.asInstanceOf[TransactionRecordStateExtension].uncommittedBlobBuffer.flushDeletedBlobs(bpss);
 
       //invalidate cached blobs
       conf.asInstanceOf[RuntimeContext].contextGetOption[BlobCacheInSession].
-        foreach(_.invalidate(recordState.asInstanceOf[TransactionRecordStateExtension].cachedStreams.ids));
+        foreach(_.invalidate(ThreadBoundContext.cachedBlobs));
     }
     )
   }

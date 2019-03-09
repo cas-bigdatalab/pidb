@@ -104,7 +104,7 @@ public class TransactionRecordState extends TransactionRecordStateExtension impl
         this.propertyDeleter = new TransactionalPropertyDeleter(this, propertyDeleter);
 
         //NOTE: context binding
-        ThreadBoundContext.bindRecordState(this);
+        //ThreadBoundContext.bindRecordState(this);
     }
 
     @Override

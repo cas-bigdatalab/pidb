@@ -10,7 +10,6 @@ import org.neo4j.driver.v1.Record
   * start StandalonePidbServerStarter first!!!
   */
 class PidbServerTest {
-
   @Test
   def testCypher(): Unit = {
 
