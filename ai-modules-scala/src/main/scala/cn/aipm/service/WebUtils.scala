@@ -57,6 +57,7 @@ object WebUtils {
         mEntityBuilder.addBinaryBody(key,value)
       }
       for ((key , value) <- inStreamContents){
+        //FIXME: use english
         // 使用此方式request-body中无数据 TODO:后续查找问题根源
         // val inputStreamBody = new InputStreamBody(value, ContentType.APPLICATION_OCTET_STREAM)
         // mEntityBuilder.addPart(key, inputStreamBody)

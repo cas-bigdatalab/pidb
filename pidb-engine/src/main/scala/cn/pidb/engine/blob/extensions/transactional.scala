@@ -1,6 +1,6 @@
 package cn.pidb.engine.blob.extensions
 
-import cn.pidb.engine.{BlobPropertyStoreService}
+import cn.pidb.engine.BlobPropertyStoreService
 import cn.pidb.util.ReflectUtils._
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.store.DynamicRecordAllocator

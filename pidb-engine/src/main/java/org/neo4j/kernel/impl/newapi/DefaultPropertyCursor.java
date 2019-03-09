@@ -19,7 +19,6 @@
  */
 package org.neo4j.kernel.impl.newapi;
 
-import cn.pidb.engine.BlobPropertyStoreService;
 import cn.pidb.engine.blob.BlobIO;
 import org.neo4j.internal.kernel.api.PropertyCursor;
 import org.neo4j.io.pagecache.PageCursor;

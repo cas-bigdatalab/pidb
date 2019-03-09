@@ -205,23 +205,20 @@ trait Expressions extends Parser
   )
 
   private def BlobLiteral: Rule1[BlobLiteralExpr] = rule("<blob>")(
-    (
-      //TODO: http://xxx
-      LeftArrowHead ~ ignoreCase("FILE://") ~ BlobURLPath ~ RightArrowHead
-        ~~>> (x => BlobLiteralExpr(BlobFileURL(x)))
-        | LeftArrowHead ~ ignoreCase("BASE64://") ~ BlobURLPath ~ RightArrowHead
-        ~~>> (x => BlobLiteralExpr(BlobBase64URL(x.mkString(""))))
-        | LeftArrowHead ~ ignoreCase("INTERNAL://") ~ BlobURLPath ~ RightArrowHead
-        ~~>> (x => BlobLiteralExpr(InternalUrl(x.mkString(""))))
-        | LeftArrowHead ~ ignoreCase("HTTP://") ~ BlobURLPath ~ RightArrowHead
-        ~~>> (x => BlobLiteralExpr(BlobHttpURL(s"http://${x.mkString("")}")))
-        | LeftArrowHead ~ ignoreCase("HTTPS://") ~ BlobURLPath ~ RightArrowHead
-        ~~>> (x => BlobLiteralExpr(BlobHttpURL(s"https://${x.mkString("")}")))
-        | LeftArrowHead ~ ignoreCase("FTP://") ~ BlobURLPath ~ RightArrowHead
-        ~~>> (x => BlobLiteralExpr(BlobFtpURL(s"ftp://${x.mkString("")}")))
-        | LeftArrowHead ~ ignoreCase("SFTP://") ~ BlobURLPath ~ RightArrowHead
-        ~~>> (x => BlobLiteralExpr(BlobFtpURL(s"sftp://${x.mkString("")}")))
-      )
+    LeftArrowHead ~ ignoreCase("FILE://") ~ BlobURLPath ~ RightArrowHead
+      ~~>> (x => BlobLiteralExpr(BlobFileURL(x)))
+      | LeftArrowHead ~ ignoreCase("BASE64://") ~ BlobURLPath ~ RightArrowHead
+      ~~>> (x => BlobLiteralExpr(BlobBase64URL(x.mkString(""))))
+      | LeftArrowHead ~ ignoreCase("INTERNAL://") ~ BlobURLPath ~ RightArrowHead
+      ~~>> (x => BlobLiteralExpr(InternalUrl(x.mkString(""))))
+      | LeftArrowHead ~ ignoreCase("HTTP://") ~ BlobURLPath ~ RightArrowHead
+      ~~>> (x => BlobLiteralExpr(BlobHttpURL(s"http://${x.mkString("")}")))
+      | LeftArrowHead ~ ignoreCase("HTTPS://") ~ BlobURLPath ~ RightArrowHead
+      ~~>> (x => BlobLiteralExpr(BlobHttpURL(s"https://${x.mkString("")}")))
+      | LeftArrowHead ~ ignoreCase("FTP://") ~ BlobURLPath ~ RightArrowHead
+      ~~>> (x => BlobLiteralExpr(BlobFtpURL(s"ftp://${x.mkString("")}")))
+      | LeftArrowHead ~ ignoreCase("SFTP://") ~ BlobURLPath ~ RightArrowHead
+      ~~>> (x => BlobLiteralExpr(BlobFtpURL(s"sftp://${x.mkString("")}")))
   )
 
   private def Expression1: Rule1[ast.Expression] = rule("an expression")(

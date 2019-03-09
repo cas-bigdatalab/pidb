@@ -104,19 +104,10 @@ public class CentralJobScheduler extends LifecycleAdapter implements JobSchedule
 
     //NOTE: blob support
     private ThreadFactory wrapThreadFactory(ThreadFactory src) {
-        return new ThreadFactory() {
-            @Override
-            public Thread newThread(Runnable r) {
-                Thread t = src.newThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        ThreadBoundContext.bindConf(config);
-                        r.run();
-                    }
-                });
-                return t;
-            }
-        };
+        return r -> src.newThread(() -> {
+            ThreadBoundContext.bindConf(config);
+            r.run();
+        });
     }
 
     @Override

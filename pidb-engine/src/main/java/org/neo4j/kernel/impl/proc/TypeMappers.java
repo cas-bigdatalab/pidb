@@ -24,7 +24,7 @@ import org.neo4j.helpers.collection.Iterables;
 import org.neo4j.internal.kernel.api.exceptions.ProcedureException;
 import org.neo4j.internal.kernel.api.procs.DefaultParameterValue;
 import org.neo4j.internal.kernel.api.procs.Neo4jTypes;
-import org.neo4j.internal.kernel.api.procs.Neo4jTypes.*;
+import org.neo4j.internal.kernel.api.procs.Neo4jTypes.AnyType;
 import org.neo4j.kernel.api.exceptions.Status;
 import org.neo4j.kernel.impl.core.EmbeddedProxySPI;
 import org.neo4j.kernel.impl.util.DefaultValueMapper;

@@ -28,7 +28,7 @@ class TransactionalBlobBuffer extends Logging {
 
   def flushDeletedBlobs(bpss: BlobPropertyStoreService): Unit = {
     val deleted = deletedBlobs.filter(_.isInstanceOf[BlobDelete]).map(_.asInstanceOf[BlobDelete].id);
-    if (!deleted.isEmpty) {
+    if (deleted.nonEmpty) {
       //bpss.blobStorage.deleteBatch(deleted);
       logger.debug(s"blobs deleted: [${deleted.map(_.asLiteralString()).mkString(", ")}]");
     }

@@ -19,7 +19,6 @@
  */
 package org.neo4j.kernel.impl.transaction.state;
 
-import cn.pidb.engine.ThreadBoundContext;
 import cn.pidb.engine.blob.extensions.TransactionRecordStateExtension;
 import cn.pidb.engine.blob.extensions.TransactionalPropertyCreator;
 import cn.pidb.engine.blob.extensions.TransactionalPropertyDeleter;

@@ -42,7 +42,7 @@ object ValueType {
 
   def typeNameOf(a: Any, b: Any): String = s"${typeNameOf(a)}:${typeNameOf(b)}"
 
-  def concat(a: String, b: String): String = s"${a}:${b}"
+  def concat(a: String, b: String): String = s"$a:$b"
 }
 
 class DomainExtractorEntry {
@@ -67,7 +67,7 @@ class CypherPluginRegistry {
 
     //propertyName, typeName
     val map: Map[(String, String), Array[PropertyExtractor]] = extractors
-      .flatMap(x => (x.extractor.declareProperties().map(prop => (prop._1, x.domain) -> x.extractor)))
+      .flatMap(x => x.extractor.declareProperties().map(prop => (prop._1, x.domain) -> x.extractor))
       .groupBy(_._1)
       .map(x => x._1 -> x._2.map(_._2))
 
@@ -203,10 +203,10 @@ class CypherPluginRegistry {
 
     private def getNotNullValueComparator(a: Any, b: Any, algoName: Option[String]): (CompareValueMethod, DomainComparatorEntry) = {
       _cachedValueComparators.getOrElseUpdate((ValueType.typeNameOf(a), ValueType.typeNameOf(b), algoName), {
-        val opt = getMatchedComparator(true, ValueType.typeNameOf(a), ValueType.typeNameOf(b), algoName);
+        val opt = getMatchedComparator(compareValueOrSet = true, ValueType.typeNameOf(a), ValueType.typeNameOf(b), algoName);
         opt.map((x) => x._1.asInstanceOf[CompareValueMethod] -> x._2)
           .orElse(
-            getMatchedComparator(false, ValueType.typeNameOf(a), ValueType.typeNameOf(b), algoName)
+            getMatchedComparator(compareValueOrSet = false, ValueType.typeNameOf(a), ValueType.typeNameOf(b), algoName)
               .map(en => asCompareValueMethod(en._1.asInstanceOf[CompareSetMethod]) -> en._2))
       }
       ).getOrElse(throw new NoSuitableComparatorException(a, b, algoName))
@@ -214,10 +214,10 @@ class CypherPluginRegistry {
 
     private def getNotNullSetComparator(a: Any, b: Any, algoName: Option[String]): (CompareSetMethod, DomainComparatorEntry) = {
       _cachedSetComparators.getOrElseUpdate((ValueType.typeNameOf(a), ValueType.typeNameOf(b), algoName), {
-        val opt = getMatchedComparator(false, ValueType.typeNameOf(a), ValueType.typeNameOf(b), algoName);
+        val opt = getMatchedComparator(compareValueOrSet = false, ValueType.typeNameOf(a), ValueType.typeNameOf(b), algoName);
         opt.map((x) => x._1.asInstanceOf[CompareSetMethod] -> x._2)
           .orElse(
-            getMatchedComparator(true, ValueType.typeNameOf(a), ValueType.typeNameOf(b), algoName)
+            getMatchedComparator(compareValueOrSet = true, ValueType.typeNameOf(a), ValueType.typeNameOf(b), algoName)
               .map(en => asCompareSetMethod(en._1.asInstanceOf[CompareValueMethod]) -> en._2))
       }
       ).getOrElse(throw new NoSuitableComparatorException(a, b, algoName))
@@ -225,13 +225,13 @@ class CypherPluginRegistry {
 
     private def asCompareValueMethod(m: CompareSetMethod): CompareValueMethod = {
       (a: Any, b: Any) =>
-        val r: Array[Array[Double]] = m(a, b).asInstanceOf[Array[Array[Double]]];
+        val r: Array[Array[Double]] = m(a, b);
         r.flatMap(x => x).max;
     }
 
     private def asCompareSetMethod(m: CompareValueMethod): CompareSetMethod = {
       (a: Any, b: Any) =>
-        val r: Double = m(a, b).asInstanceOf[Double];
+        val r: Double = m(a, b);
         Array(Array(r))
     }
   }
