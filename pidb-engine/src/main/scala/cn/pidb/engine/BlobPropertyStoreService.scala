@@ -88,7 +88,7 @@ class BlobPropertyStoreService(storeDir: File, conf: Config, proceduresService: 
     }
 
     blobStorage.disconnect();
-    logger.info(s"blob storage shutdown: ${blobStorage}");
+    logger.info(s"blob storage shutdown: $blobStorage");
   }
 
   private def startBlobServerIfNeeded(): Unit = {
@@ -98,7 +98,7 @@ class BlobPropertyStoreService(storeDir: File, conf: Config, proceduresService: 
       val blobServer = new TransactionalBlobStreamServer(this.conf, httpPort, servletPath);
       //set url
       val hostName = configuration.getValueAsString("blob.http.host", "localhost");
-      val httpUrl = s"http://$hostName:${httpPort}$servletPath";
+      val httpUrl = s"http://$hostName:$httpPort$servletPath";
 
       conf.asInstanceOf[RuntimeContext].contextPut("blob.server.connector.url", httpUrl);
       blobServer.start();
@@ -217,7 +217,7 @@ class BlobCacheInSession(streamServer: TransactionalBlobStreamServer) extends Lo
         val now = System.currentTimeMillis();
         val ids = cache.filter(_._2._2 < now).map(_._1)
         if (!ids.isEmpty) {
-          logger.debug(s"cached blobs expired: [${ids.mkString(",")}]");
+          //logger.debug(s"cached blobs expired: [${ids.mkString(",")}]");
           invalidate(ids);
         }
       }
@@ -235,7 +235,7 @@ class BlobCacheInSession(streamServer: TransactionalBlobStreamServer) extends Lo
   }
 
   def invalidate(ids: Iterable[String]) = {
-    logger.debug(s"invalidating [${ids.mkString(",")}]");
+    //logger.debug(s"invalidating [${ids.mkString(",")}]");
     cache --= ids;
   }
 

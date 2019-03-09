@@ -128,6 +128,7 @@ class HBaseStorage extends Storage {
     HBaseAdmin.available(hbaseConf)
     logger.info("successfully initial the connection to the zookeeper")
     val dbName = conf.getValueAsString("blob.storage.hbase.dbName", "testdb")
+    //TODO: storageTable --> BLOB_TABLE? using specific names, instead of common-purposed names
     val tableName = conf.getValueAsString("blob.storage.hbase.tableName", "storageTable")
     val name = TableName.valueOf(dbName + "." + tableName)
     conn = ConnectionFactory.createConnection(hbaseConf)

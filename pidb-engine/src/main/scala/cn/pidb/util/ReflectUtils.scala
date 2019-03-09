@@ -6,7 +6,7 @@ import java.lang.reflect.Field
   * Created by bluejoe on 2018/7/5.
   */
 object ReflectUtils {
-  implicit def reflected(o: AnyRef) = new ReflectedObject(o);
+  implicit def reflected(o: AnyRef): ReflectedObject = new ReflectedObject(o);
 
   def singleton[T](implicit m: Manifest[T]): AnyRef = {
     val field = Class.forName(m.runtimeClass.getName + "$").getDeclaredField("MODULE$");
@@ -44,18 +44,17 @@ class ReflectedObject(o: AnyRef) {
       clazz.getDeclaredField(fieldName);
     }
     catch {
-      case e: NoSuchFieldException => {
+      case e: NoSuchFieldException =>
         val sc = clazz.getSuperclass;
         if (sc == null)
           throw e;
 
         _getField(sc, fieldName);
-      }
     }
   }
 
   def _getLazy(name: String): AnyRef = {
-    _call(s"${name}$$lzycompute")();
+    _call(s"$name$$lzycompute")();
   }
 
   def _call(name: String)(args: Any*): AnyRef = {

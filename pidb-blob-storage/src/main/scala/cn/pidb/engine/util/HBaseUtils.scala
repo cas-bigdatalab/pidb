@@ -4,6 +4,7 @@ import java.io.{File, FileInputStream, InputStream}
 
 import cn.pidb.blob._
 import cn.pidb.util.StreamUtils._
+import org.apache.commons.codec.digest.DigestUtils
 import org.apache.hadoop.hbase.client.{Delete, Get, Put}
 import org.apache.hadoop.hbase.util.Bytes
 
@@ -13,8 +14,15 @@ object HBaseUtils {
   val qualifyFamilyMT : Array[Byte] = Bytes.toBytes("mimeType")
   val qualifyFamilyLen : Array[Byte] = Bytes.toBytes("length")
 
+  //TODO: maybe not effective
+  val md5 = DigestUtils.getMd5Digest
+  def makeRowKey(blobId: BlobId): Array[Byte] ={
+    //blobId.asByteArray().reverse
+    md5.digest(blobId.asByteArray())
+  }
+
   def buildPut(blob: Blob, blobId: BlobId) : Put = {
-    val retPut : Put = new Put(blobId.asByteArray())
+    val retPut : Put = new Put(makeRowKey(blobId))
     retPut.addColumn(columnFamily, qualifyFamilyBlob, blob.toBytes())
     retPut.addColumn(columnFamily, qualifyFamilyMT, Bytes.toBytes(blob.mimeType.code)) //mime
     retPut.addColumn(columnFamily, qualifyFamilyLen, Bytes.toBytes(blob.length)) //length
@@ -42,13 +50,13 @@ object HBaseUtils {
   }
 
   def buildDelete(blobId: BlobId) : Delete = {
-    val delete : Delete = new Delete(blobId.asByteArray())
+    val delete : Delete = new Delete(makeRowKey(blobId))
     delete.addColumns(columnFamily, qualifyFamilyBlob)
     delete.addColumns(columnFamily, qualifyFamilyMT)
     delete.addColumns(columnFamily, qualifyFamilyLen)
   }
 
   def buildGetBlob(blobId: BlobId) : Get = {
-    new Get(blobId.asByteArray())
+    new Get(makeRowKey(blobId))
   }
 }

@@ -119,7 +119,7 @@ object BlobIO extends Logging {
         override def writeLong(l: Long): Unit = out.writeLong(l);
       }
 
-    _writeBlobIntoBoltStream(blob, out2, true);
+    _writeBlobIntoBoltStream(blob, out2, useInlineAlways = true);
   }
 
   def writeBlobOnBoltServerSide(blob: Blob, packer: org.neo4j.bolt.v1.packstream.PackStream.Packer): Unit = {
@@ -135,7 +135,7 @@ object BlobIO extends Logging {
         override def writeLong(l: Long): Unit = out.writeLong(l);
       }
 
-    _writeBlobIntoBoltStream(blob, out2, false);
+    _writeBlobIntoBoltStream(blob, out2, useInlineAlways = false);
   }
 
   trait PackInputInterface {
@@ -285,7 +285,7 @@ object BlobIO extends Logging {
   }
 
   def readBlobValue(block: PropertyBlock, conf: Config): BlobValue = {
-    _readBlobValue(block.getValueBlocks(), conf);
+    _readBlobValue(block.getValueBlocks, conf);
   }
 
   def prepare2DeleteBlobProperty(deleter: PropertyDeleter, primitiveProxy: RecordProxy[_, Void],

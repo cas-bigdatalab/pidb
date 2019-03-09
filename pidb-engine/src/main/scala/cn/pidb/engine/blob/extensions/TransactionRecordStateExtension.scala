@@ -19,7 +19,7 @@ class TransactionalBlobBuffer extends Logging {
     addedBlobs.filter(_.isInstanceOf[BlobAdd]).map(_.asInstanceOf[BlobAdd])
       .map(x => x.id -> x.blob).grouped(100).foreach(ops => {
       bpss.blobStorage.saveBatch(ops);
-      logger.debug(s"blobs saved: [${ops.map(_._2).mkString(", ")}]");
+      //logger.debug(s"blobs saved: [${ops.map(_._2).mkString(", ")}]");
     }
     )
 
@@ -28,11 +28,12 @@ class TransactionalBlobBuffer extends Logging {
 
   def flushDeletedBlobs(bpss: BlobPropertyStoreService): Unit = {
     val deleted = deletedBlobs.filter(_.isInstanceOf[BlobDelete]).map(_.asInstanceOf[BlobDelete].id);
+    /*
     if (deleted.nonEmpty) {
       //bpss.blobStorage.deleteBatch(deleted);
       logger.debug(s"blobs deleted: [${deleted.map(_.asLiteralString()).mkString(", ")}]");
     }
-
+    */
     deletedBlobs.clear()
   }
 }

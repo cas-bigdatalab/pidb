@@ -19,20 +19,20 @@ import scala.collection.mutable
 class RecordStateCollectorCommand(val neoStores: NeoStores, val txState: ReadableTransactionState, val recordState: TransactionRecordState)
   extends Command {
   override def handle(handler: CommandVisitor): Boolean = {
-    if (handler.isInstanceOf[BlobFlushTransactionApplier]) {
-      val conf = neoStores._get("config").asInstanceOf[Config];
-      handler.asInstanceOf[BlobFlushTransactionApplier].collect(conf, recordState);
-      true
-    }
-    else {
-      false
+    handler match {
+      case applier: BlobFlushTransactionApplier =>
+        val conf = neoStores._get("config").asInstanceOf[Config];
+        applier.collect(conf, recordState);
+        true
+      case _ =>
+        false
     }
   }
 
   override def serialize(channel: WritableChannel): Unit = {
   }
 
-  override def toString() = "";
+  override def toString = "";
 }
 
 class BlobFlushTransactionAppliers() extends BatchTransactionApplier.Adapter {
