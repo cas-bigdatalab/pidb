@@ -6,7 +6,7 @@ import cn.pidb.blob.Blob
 import cn.pidb.engine.PidbConnector
 import org.apache.commons.io.FileUtils
 
-object putHBaseWithMultiProperty {
+object PutHBaseWithMultiProperty {
   def main(args: Array[String]): Unit = {
     val dir = "target/tmp"
     val n: Int = 1

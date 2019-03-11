@@ -4,9 +4,7 @@ import java.io.File
 import cn.pidb.blob.Blob
 import cn.pidb.engine.PidbConnector
 import org.apache.commons.io.FileUtils
-
-//capitalizes 1st letter
-object putHbase {
+object PutHbase {
   def main(args: Array[String]): Unit = {
     val dir = "target/tmp"
     val n: Int = 1
