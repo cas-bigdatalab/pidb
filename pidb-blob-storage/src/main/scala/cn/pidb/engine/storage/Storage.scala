@@ -127,16 +127,20 @@ class HBaseStorage extends Storage {
     hbaseConf.set("zookeeper.znode.parent", zkNode)
     HBaseAdmin.available(hbaseConf)
     logger.info("successfully initial the connection to the zookeeper")
-    val dbName = conf.getValueAsString("blob.storage.hbase.dbName", "testdb")
+    //no db in hbase
+    //val dbName = conf.getValueAsString("blob.storage.hbase.dbName", "testdb")
     //TODO: storageTable --> BLOB_TABLE? using specific names, instead of common-purposed names
     val tableName = conf.getValueAsString("blob.storage.hbase.tableName", "storageTable")
-    val name = TableName.valueOf(dbName + "." + tableName)
+    val name = TableName.valueOf(tableName)
     conn = ConnectionFactory.createConnection(hbaseConf)
     val admin = conn.getAdmin
     if (!admin.tableExists(name)) {
-      logger.info("table not exists. create it in hbase")
-      admin.createTable(new ModifyableTableDescriptor(TableName.valueOf(dbName + "." + tableName))
+      //create it? prints helpful msg
+      //logger.info("table not exists. create it in hbase")
+      admin.createTable(new ModifyableTableDescriptor(name)
         .setColumnFamily(new ModifyableColumnFamilyDescriptor(HBaseUtils.columnFamily)))
+
+      logger.info(s"table created: $tableName")
     }
     _table = conn.getTable(name, ForkJoinPool.commonPool())
     this._blobIdFac = blobIdFac
