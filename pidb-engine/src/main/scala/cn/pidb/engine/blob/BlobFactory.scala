@@ -5,6 +5,10 @@ import java.net.{HttpURLConnection, URL}
 
 import cn.pidb.blob._
 import cn.pidb.util.Logging
+import org.neo4j.driver.internal.types.{TypeConstructor, TypeRepresentation}
+import org.neo4j.driver.internal.value.ValueAdapter
+import org.neo4j.driver.v1.types.Type
+import org.neo4j.values.storable.BlobHolder
 
 class InlineBlob(bytes: Array[Byte], val length: Long, val mimeType: MimeType)
   extends Blob with Logging {
@@ -43,4 +47,23 @@ class RemoteBlob(urlConnector: String, blobId: BlobId, val length: Long, val mim
       t;
     }
   }
+}
+
+class BoltBlobValue(val blob: Blob)
+  extends ValueAdapter with BlobHolder {
+
+  val BOLT_BLOB_TYPE = new TypeRepresentation(TypeConstructor.BLOB);
+
+  override def `type`(): Type = BOLT_BLOB_TYPE;
+
+  override def equals(obj: Any): Boolean = obj.isInstanceOf[BoltBlobValue] &&
+    obj.asInstanceOf[BoltBlobValue].blob.equals(this.blob);
+
+  override def hashCode: Int = blob.hashCode()
+
+  override def asBlob: Blob = blob;
+
+  override def asObject = blob;
+
+  override def toString: String = s"BoltBlobValue(blob=${blob.toString})"
 }

@@ -639,6 +639,7 @@ public class PropertyStore extends CommonAbstractStore<PropertyRecord,NoStoreHea
             }
         }
 
+        //NOTE: blob
         @Override
         public void writeBlob(Blob blob) throws IOException {
            BlobIO.saveBlob(blob, this);

@@ -210,7 +210,6 @@ class BlobPropertyStoreService(storeDir: File, conf: Config, proceduresService: 
 }
 
 class BlobCacheInSession(streamServer: TransactionalBlobStreamServer) extends Logging {
-
   def start() {
     new Thread(new Runnable {
       override def run() {

@@ -6,13 +6,13 @@ import org.apache.commons.io.IOUtils
 import org.junit.{Assert, Test}
 import org.neo4j.driver.v1.Record
 
-/**
-  * start StandalonePidbServerStarter first!!!
-  */
-class PidbServerTest {
+class PidbServerTest extends TestBase {
+
   @Test
   def testCypher(): Unit = {
+    setupNewDatabase();
 
+    val server = PidbConnector.startServer(new File("./testdb"), new File("./neo4j.conf"));
     val client = PidbConnector.connect();
 
     //a non-blob
@@ -105,5 +105,7 @@ class PidbServerTest {
           });
 
       });
+
+    server.shutdown();
   }
 }

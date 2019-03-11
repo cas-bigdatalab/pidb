@@ -21,7 +21,6 @@ package org.neo4j.kernel.impl.store;
 
 import cn.pidb.blob.Blob;
 import cn.pidb.engine.blob.BlobIO;
-import cn.pidb.engine.blob.extensions.TransactionRecordStateAware;
 import org.neo4j.helpers.collection.Pair;
 import org.neo4j.io.pagecache.PageCache;
 import org.neo4j.kernel.configuration.Config;
@@ -207,7 +206,7 @@ public class DynamicArrayStore extends AbstractDynamicStore {
         int totalBytesRequired = STRING_HEADER_SIZE; // 1b type + 4b array length
         for (int i = 0; i < array.length; i++) {
             Blob blob = array[i];
-            byte[] bytes = BlobIO.encodeBlob(blob, (TransactionRecordStateAware) recordAllocator);
+            byte[] bytes = BlobIO.encodeBlob(blob);
             blobsAsBytes[i] = bytes;
             totalBytesRequired += 4/*byte[].length*/ + bytes.length;
         }
@@ -315,7 +314,7 @@ public class DynamicArrayStore extends AbstractDynamicStore {
                 int byteLength = dataBuffer.getInt();
                 byte[] blobByteArray = new byte[byteLength];
                 dataBuffer.get(blobByteArray);
-                result[i] = BlobIO.decodeBlob(blobByteArray, conf);
+                result[i] = BlobIO.decodeBlob(blobByteArray);
             }
 
             return Values.blobArray(result);

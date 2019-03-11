@@ -21,7 +21,6 @@ package org.neo4j.kernel.impl.api.store;
 
 import cn.pidb.blob.Blob;
 import cn.pidb.engine.blob.BlobIO;
-import org.neo4j.kernel.configuration.Config;
 import org.neo4j.kernel.impl.store.GeometryType;
 import org.neo4j.kernel.impl.store.PropertyType;
 import org.neo4j.kernel.impl.store.ShortArray;
@@ -35,7 +34,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 public class PropertyUtil {
-    public static ArrayValue readArrayFromBuffer(ByteBuffer buffer, Config conf) {
+    public static ArrayValue readArrayFromBuffer(ByteBuffer buffer) {
         if (buffer.limit() <= 0) {
             throw new IllegalStateException("Given buffer is empty");
         }
@@ -63,7 +62,7 @@ public class PropertyUtil {
                     int byteLength = buffer.getInt();
                     byte[] blobByteArray = new byte[byteLength];
                     buffer.get(blobByteArray);
-                    result[i] = BlobIO.decodeBlob(blobByteArray, conf);
+                    result[i] = BlobIO.decodeBlob(blobByteArray);
                     //buffer.position( buffer.position() + byteLength );
                 }
                 return Values.blobArray(result);

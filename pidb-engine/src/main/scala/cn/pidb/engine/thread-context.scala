@@ -2,9 +2,8 @@ package cn.pidb.engine
 
 import java.util.function.Supplier
 
-import cn.pidb.engine.blob.extensions.RuntimeContext
 import cn.pidb.util.Logging
-import org.neo4j.kernel.configuration.Config
+import org.neo4j.kernel.api.KernelTransaction
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -35,13 +34,11 @@ object ThreadBoundContext extends Logging {
     local.get();
   }
 
-  def bindConf(value: Config) = _bind(value, configLocal);
+  private val transactionLocal: ThreadLocal[KernelTransaction] = new ThreadLocal[KernelTransaction]();
 
-  private val configLocal: ThreadLocal[Config] = new ThreadLocal[Config]();
+  def transaction = _get(transactionLocal);
 
-  def config = _get(configLocal);
-
-  def runtimeContext: RuntimeContext = configLocal.get().asInstanceOf[RuntimeContext];
+  def bind(value: KernelTransaction) = _bind(value, transactionLocal);
 
   private val cachedBlobsLocal: ThreadLocal[ArrayBuffer[String]] = ThreadLocal.withInitial(new Supplier[ArrayBuffer[String]] {
     override def get(): ArrayBuffer[String] = ArrayBuffer()
