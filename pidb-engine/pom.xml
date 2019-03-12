@@ -94,6 +94,19 @@
             <artifactId>neo4j-java-driver</artifactId>
             <version>1.6.0</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.neo4j/neo4j-csv -->
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-csv</artifactId>
+            <version>${neo4j.version}</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.neo4j/neo4j-import-tool -->
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-import-tool</artifactId>
+            <version>${neo4j.version}</version>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/org.neo4j.test/neo4j-harness -->
         <dependency>
             <groupId>org.neo4j.test</groupId>
