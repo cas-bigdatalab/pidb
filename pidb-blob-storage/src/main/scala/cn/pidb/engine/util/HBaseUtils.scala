@@ -9,6 +9,7 @@ import org.apache.hadoop.hbase.client.{Delete, Get, Put}
 import org.apache.hadoop.hbase.util.Bytes
 
 object HBaseUtils {
+  //column name: using uppercase
   val columnFamily : Array[Byte] = Bytes.toBytes("blob")
   val qualifyFamilyBlob : Array[Byte] = Bytes.toBytes("blobValue")
   val qualifyFamilyMT : Array[Byte] = Bytes.toBytes("mimeType")
@@ -17,8 +18,8 @@ object HBaseUtils {
   //TODO: maybe not effective
   val md5 = DigestUtils.getMd5Digest
   def makeRowKey(blobId: BlobId): Array[Byte] ={
-    //blobId.asByteArray().reverse
-    md5.digest(blobId.asByteArray())
+    blobId.asByteArray().reverse
+    //md5.digest(blobId.asByteArray())
   }
 
   def buildPut(blob: Blob, blobId: BlobId) : Put = {
