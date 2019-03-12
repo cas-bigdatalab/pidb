@@ -26,10 +26,14 @@ object PidbConnector extends Logging {
 
   //TODO: CypherService over GraphDatabaseService
   def connect(dbs: GraphDatabaseService): CypherService = {
-    null;
+    new LocalGraphService(dbs);
   }
 
-  def connect(url: String = "bolt://localhost:7687", user: String = "", pass: String = ""): CypherService = {
+  /**
+    * connect remote server
+    * @return
+    */
+  def connect(url: String, user: String = "", pass: String = ""): CypherService = {
     new BoltService(url, user, pass);
   }
 

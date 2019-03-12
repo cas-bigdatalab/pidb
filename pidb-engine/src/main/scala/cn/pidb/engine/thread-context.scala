@@ -12,18 +12,7 @@ import scala.collection.mutable.ArrayBuffer
   */
 object ThreadBoundContext extends Logging {
   private def _bind[T](value: T, local: ThreadLocal[T]) = {
-    /*
-    val src = local.get();
-    logger.debug(s"${Thread.currentThread()}: ${pretty(src)}-->${pretty(value)}");
-    */
     local.set(value);
-  }
-
-  private def pretty(o: Any): String = {
-    if (null == o)
-      "null"
-    else
-      s"${o.getClass.getSimpleName}@${o.hashCode()}"
   }
 
   private def _get[T](local: ThreadLocal[T]) = {

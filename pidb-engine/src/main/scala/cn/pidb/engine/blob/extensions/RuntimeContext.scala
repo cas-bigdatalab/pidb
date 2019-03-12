@@ -1,13 +1,14 @@
 package cn.pidb.engine.blob.extensions
 
 import cn.pidb.engine.BlobPropertyStoreService
+import cn.pidb.util.Logging
 
 import scala.collection.mutable.{Map => MMap}
 
 /**
   * Created by bluejoe on 2018/8/12.
   */
-class RuntimeContext {
+class RuntimeContext extends Logging {
   private val _map = MMap[String, Any]();
 
   def contextPut[T](key: String, value: T): T = {
@@ -17,7 +18,9 @@ class RuntimeContext {
 
   def contextPut[T](value: T)(implicit manifest: Manifest[T]): T = contextPut[T](manifest.runtimeClass.getName, value)
 
-  def contextGet[T](key: String): T = _map(key).asInstanceOf[T];
+  def contextGet[T](key: String): T = {
+    _map(key).asInstanceOf[T]
+  };
 
   def contextGetOption[T](key: String): Option[T] = _map.get(key).map(_.asInstanceOf[T]);
 

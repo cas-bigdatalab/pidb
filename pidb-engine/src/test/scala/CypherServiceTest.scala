@@ -1,20 +1,18 @@
 import java.io.{File, FileInputStream}
 
 import cn.pidb.blob.Blob
-import cn.pidb.engine.PidbConnector
+import cn.pidb.engine.{CypherService, PidbConnector}
 import org.apache.commons.io.IOUtils
-import org.junit.{Assert, Test}
+import org.junit.{Assert, Before, Test}
 import org.neo4j.driver.v1.Record
 
-class PidbServerTest extends TestBase {
-
-  @Test
-  def testCypher(): Unit = {
+class CypherServiceTest extends TestBase {
+  @Before
+  def setup(): Unit = {
     setupNewDatabase();
+  }
 
-    val server = PidbConnector.startServer(new File("./testdb"), new File("./neo4j.conf"));
-    val client = PidbConnector.connect();
-
+  private def testCypher(client: CypherService): Unit = {
     //a non-blob
     val (node, name, age, bytes) = client.querySingleObject("match (n) where n.name='bob' return n, n.name, n.age, n.bytes", (result: Record) => {
       (result.get("n").asNode(), result.get("n.name").asString(), result.get("n.age").asInt(), result.get("n.bytes").asByteArray())
@@ -105,7 +103,22 @@ class PidbServerTest extends TestBase {
           });
 
       });
+  }
+
+  @Test
+  def testRemoteBoltServer(): Unit = {
+    val server = PidbConnector.startServer(new File("./testdb"), new File("./neo4j.conf"));
+    val client = PidbConnector.connect("bolt://localhost:7687");
+
+    testCypher(client);
 
     server.shutdown();
+  }
+
+  @Test
+  def testLocalDB(): Unit = {
+    val db = openDatabase();
+    testCypher(PidbConnector.connect(db));
+    db.shutdown();
   }
 }

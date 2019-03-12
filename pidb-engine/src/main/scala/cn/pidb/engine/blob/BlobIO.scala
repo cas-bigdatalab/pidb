@@ -1,6 +1,6 @@
 package cn.pidb.engine.blob
 
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
+import java.io.ByteArrayOutputStream
 
 import cn.pidb.blob._
 import cn.pidb.blob.storage.BlobStorage
@@ -14,7 +14,6 @@ import org.neo4j.driver.v1.Value
 import org.neo4j.kernel.api.{KernelTransaction, TransactionHook}
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.api.TransactionHooks
-import org.neo4j.kernel.impl.newapi.DefaultPropertyCursor
 import org.neo4j.kernel.impl.store.PropertyType
 import org.neo4j.kernel.impl.store.record.{PrimitiveRecord, PropertyBlock, PropertyRecord}
 import org.neo4j.kernel.impl.transaction.state.RecordAccess.RecordProxy
