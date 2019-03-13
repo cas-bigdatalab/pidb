@@ -1210,7 +1210,6 @@ public class Extractors
             Pattern p = Pattern.compile("^<\\s*(?<url>(http|ftp|ftps|https|file|):\\/\\/[\\w\\-_]+(\\.[\\w\\-_]+)" +
                     "+([\\w\\-\\.,@?^=%&:/~\\+#]*[\\w\\-\\@?^=%&/~\\+#])?)\\s*>$") ;
             Matcher m =p.matcher(str);
-            System.out.println(str);
 
             if(!m.matches()){
                 return false;
