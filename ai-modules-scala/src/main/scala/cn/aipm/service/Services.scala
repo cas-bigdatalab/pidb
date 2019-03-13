@@ -7,7 +7,7 @@ import scala.util.parsing.json.JSON
 
 import cn.pidb.blob.AnyComparator
 import cn.pidb.util.Configuration
-import cn.pidb.util.ConfigurationEx._
+import cn.pidb.util.ConfigurationUtils._
 
 
 class Services(private val _aipmHttpHostUrl:String) {

@@ -1,5 +1,6 @@
 package cn.pidb.engine
 
+import cn.pidb.blob.storage.BlobStorage
 import cn.pidb.blob.{Blob, BlobId}
 import cn.pidb.engine.blob.extensions.RuntimeContext
 import cn.pidb.util.Logging
@@ -12,24 +13,16 @@ import scala.collection.mutable.ArrayBuffer
   * Created by bluejoe on 2018/11/28.
   */
 object ThreadBoundContext extends Logging {
-  private def _bind[T](value: T, local: ThreadLocal[T]) = {
-    local.set(value);
-  }
-
-  private def _get[T](local: ThreadLocal[T]) = {
-    local.get();
-  }
-
   private val _stateLocal: ThreadLocal[BoundTransactionState] = new ThreadLocal[BoundTransactionState]();
 
-  def state: BoundTransactionState = _get(_stateLocal);
+  def state: BoundTransactionState = _stateLocal.get;
 
-  def bindState(state: BoundTransactionState) = _bind(state, _stateLocal);
+  def bindState(state: BoundTransactionState) = _stateLocal.set(state);
+
+  def unbindState() = _stateLocal.remove();
 
   def bind(tx: KernelTransaction) = bindState(new BoundTransactionState() {
-    override val conf: RuntimeContext = tx._get("storageEngine.neoStores.config").asInstanceOf[RuntimeContext];
-    override val blobBuffer: TransactionalBlobBuffer = new TransactionalBlobBufferImpl(conf.getBlobPropertyStoreService);
-    val streamingBlobs: CachedStreamingBlobList = new CachedStreamingBlobListImpl();
+    override def conf: RuntimeContext = tx._get("storageEngine.neoStores.config").asInstanceOf[RuntimeContext];
   });
 
   def blobBuffer: TransactionalBlobBuffer = state.blobBuffer;
@@ -38,13 +31,21 @@ object ThreadBoundContext extends Logging {
 
   def streamingBlobs: CachedStreamingBlobList = state.streamingBlobs;
 
-  def blobPropertyStoreService: BlobPropertyStoreService = conf.getBlobPropertyStoreService;
+  def blobPropertyStoreService: BlobPropertyStoreService = state.blobPropertyStoreService;
+
+  def blobStorage: BlobStorage = state.blobStorage;
 }
 
 trait BoundTransactionState {
-  val conf: RuntimeContext;
-  val blobBuffer: TransactionalBlobBuffer;
-  val streamingBlobs: CachedStreamingBlobList;
+  def conf: RuntimeContext;
+
+  def blobPropertyStoreService: BlobPropertyStoreService = conf.getBlobPropertyStoreService;
+
+  def blobStorage: BlobStorage = blobPropertyStoreService.blobStorage;
+
+  def blobBuffer: TransactionalBlobBuffer = new TransactionalBlobBufferImpl(blobStorage);
+
+  def streamingBlobs: CachedStreamingBlobList = new CachedStreamingBlobListImpl();
 }
 
 trait CachedStreamingBlobList {
@@ -77,7 +78,7 @@ trait TransactionalBlobBuffer {
   def getBlob(id: BlobId): Option[Blob];
 }
 
-class TransactionalBlobBufferImpl(bpss: BlobPropertyStoreService) extends TransactionalBlobBuffer with Logging {
+class TransactionalBlobBufferImpl(blobStorage: BlobStorage) extends TransactionalBlobBuffer with Logging {
 
   trait BlobChange {
     val id: BlobId;
@@ -106,10 +107,10 @@ class TransactionalBlobBufferImpl(bpss: BlobPropertyStoreService) extends Transa
 
   def removeBlob(bid: BlobId) = deletedBlobs += BlobDelete(bid);
 
-  private def flushAddedBlobs(bpss: BlobPropertyStoreService): Unit = {
+  private def flushAddedBlobs(): Unit = {
     addedBlobs.filter(_.isInstanceOf[BlobAdd]).map(_.asInstanceOf[BlobAdd])
       .map(x => x.id -> x.blob).grouped(100).foreach(ops => {
-      bpss.blobStorage.saveBatch(ops);
+      blobStorage.saveBatch(ops);
       logger.debug(s"blobs saved: [${ops.map(_._2).mkString(", ")}]");
     }
     )
@@ -117,11 +118,11 @@ class TransactionalBlobBufferImpl(bpss: BlobPropertyStoreService) extends Transa
     addedBlobs.clear()
   }
 
-  private def flushDeletedBlobs(bpss: BlobPropertyStoreService): Unit = {
+  private def flushDeletedBlobs(): Unit = {
     val deleted = deletedBlobs.filter(_.isInstanceOf[BlobDelete]).map(_.asInstanceOf[BlobDelete].id);
 
     if (deleted.nonEmpty) {
-      bpss.blobStorage.deleteBatch(deleted);
+      blobStorage.deleteBatch(deleted);
       logger.debug(s"blobs deleted: [${deleted.map(_.asLiteralString()).mkString(", ")}]");
     }
 
@@ -129,7 +130,7 @@ class TransactionalBlobBufferImpl(bpss: BlobPropertyStoreService) extends Transa
   }
 
   def flushBlobs() = {
-    flushAddedBlobs(bpss);
-    flushDeletedBlobs(bpss);
+    flushAddedBlobs();
+    flushDeletedBlobs();
   }
 }

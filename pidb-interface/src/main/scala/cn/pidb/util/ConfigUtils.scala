@@ -68,7 +68,7 @@ class ConfigurationEx(conf: Configuration) extends Logging {
   }
 }
 
-object ConfigurationEx {
+object ConfigurationUtils {
   implicit def config2Ex(conf: Configuration) = new ConfigurationEx(conf);
 }
 

@@ -581,7 +581,7 @@ public class ImportTool
         try
         {
             //NOTE: for blob
-            BlobIO.BlobBatchImportSession bis = BlobIO.startBlobBatchImport(dbConfig);
+            BlobIO.BlobBatchImportSession bis = BlobIO.startBlobBatchImport(storeDir, dbConfig);
 
             importer.doImport( input );
             success = true;

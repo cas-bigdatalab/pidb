@@ -6,7 +6,7 @@ import cn.pidb.blob._
 import cn.pidb.blob.storage.{BlobStorage, RollbackCommand}
 import cn.pidb.engine.buffer.Buffer
 import cn.pidb.engine.util.{FileUtils, HBaseUtils}
-import cn.pidb.util.ConfigurationEx._
+import cn.pidb.util.ConfigurationUtils._
 import cn.pidb.util.StreamUtils._
 import cn.pidb.util.{Configuration, Logging}
 import org.apache.commons.io.IOUtils

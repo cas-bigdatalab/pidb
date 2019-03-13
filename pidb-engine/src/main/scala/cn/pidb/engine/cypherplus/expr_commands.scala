@@ -34,6 +34,7 @@ import org.neo4j.values.virtual.VirtualValues
 
 object QueryStateUtils {
   def getBlobPropertyStoreService(state: QueryState): BlobPropertyStoreService = {
+    //FIXME: ThreadBoundContext?
     if (state.query.isInstanceOf[UpdateCountingQueryContext])
       state._get("query.inner.inner.transactionalContext.tc.graph.graph.config")
     else

@@ -8,7 +8,7 @@ import cn.pidb.blob.storage.Closable
 import cn.pidb.engine.storage.{Bufferable, Storage}
 import cn.pidb.engine.buffer.exception.NotBindingException
 import cn.pidb.util.Configuration
-import cn.pidb.util.ConfigurationEx._
+import cn.pidb.util.ConfigurationUtils._
 
 trait Buffer extends Closable {
   protected final var temp : Storage with Bufferable = _ // only delete
