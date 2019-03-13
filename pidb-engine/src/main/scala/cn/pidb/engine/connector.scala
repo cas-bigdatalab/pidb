@@ -94,9 +94,6 @@ class LocalGraphService(db: GraphDatabaseService)
           JavaConversions.mapAsJavaMap(m.getAllProperties.map(x =>
             x._1 -> Values.value(x._2)).toMap)))
 
-        case m: NodeProxy => new NodeValue(new InternalNode(m.getId, m.getLabels.map(_.name()),
-          JavaConversions.mapAsJavaMap(m.getAllProperties.map(x =>
-            x._1 -> Values.value(x._2)).toMap)))
         case m => Values.value(m)
       }
     }

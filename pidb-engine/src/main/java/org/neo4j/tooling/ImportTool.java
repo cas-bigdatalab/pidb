@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-
+import cn.pidb.engine.blob.BlobIO;
 import org.neo4j.csv.reader.IllegalMultilineFieldException;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.helpers.Args;
@@ -580,8 +580,14 @@ public class ImportTool
         success = false;
         try
         {
+            //NOTE: for blob
+            BlobIO.BlobBatchImportSession bis = BlobIO.startBlobBatchImport(dbConfig);
+
             importer.doImport( input );
             success = true;
+
+            //NOTE: for blob
+            bis.success();
         }
         catch ( Exception e )
         {

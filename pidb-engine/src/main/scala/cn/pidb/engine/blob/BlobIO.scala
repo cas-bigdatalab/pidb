@@ -4,9 +4,8 @@ import java.io.ByteArrayOutputStream
 
 import cn.pidb.blob._
 import cn.pidb.blob.storage.BlobStorage
-import cn.pidb.engine.blob.extensions.Extensions._
+import cn.pidb.engine._
 import cn.pidb.engine.blob.extensions._
-import cn.pidb.engine.{BlobCacheInSession, BlobPropertyStoreService, ThreadBoundContext}
 import cn.pidb.util.ReflectUtils._
 import cn.pidb.util.StreamUtils._
 import cn.pidb.util.{Logging, StreamUtils}
@@ -46,8 +45,10 @@ object BlobIO extends Logging {
       }
 
       override def afterCommit(state: ReadableTransactionState, transaction: KernelTransaction, outcome: TransactionHandlerState): Unit = {
-        val conf = tx._conf.asInstanceOf[RuntimeContext];
-        state.asInstanceOf[TxStateExtension].flushBlobs(conf.asInstanceOf[Config]);
+        //val conf = tx._conf.asInstanceOf[RuntimeContext];
+        //state.asInstanceOf[TxStateExtension].flushBlobs(conf.asInstanceOf[Config]);
+        ThreadBoundContext.state.blobBuffer.flushBlobs();
+        ThreadBoundContext.conf.contextGetOption[BlobCacheInSession].map(_.invalidate(ThreadBoundContext.streamingBlobs.ids()));
       }
 
       override def beforeCommit(state: ReadableTransactionState, transaction: KernelTransaction, storeReadLayer: StoreReadLayer, statement: StorageStatement): TransactionHandlerState = {
@@ -60,7 +61,8 @@ object BlobIO extends Logging {
     val baos = new ByteArrayOutputStream();
     val blobId = blobIdFactory.create();
     _encodeBlobEntryAsLongArray(blob, blobId, 0).foreach(baos.writeLong(_));
-    ThreadBoundContext.transaction._state.asInstanceOf[TxStateExtension].addBlob(blobId, blob);
+    //ThreadBoundContext.transaction._state.asInstanceOf[TxStateExtension].addBlob(blobId, blob);
+    ThreadBoundContext.state.blobBuffer.addBlob(blobId, blob);
     baos.toByteArray;
   }
 
@@ -108,7 +110,7 @@ object BlobIO extends Logging {
     }
     else {
       //write as a HTTP resource
-      val config = ThreadBoundContext.transaction._conf;
+      val config = ThreadBoundContext.state.conf;
       val httpConnectorUrl: String = config.asInstanceOf[RuntimeContext].contextGet("blob.server.connector.url").asInstanceOf[String];
       val bpss = config.asInstanceOf[RuntimeContext].getBlobPropertyStoreService;
       //http://localhost:1224/blob
@@ -228,11 +230,32 @@ object BlobIO extends Logging {
     }).map(new BlobValue(_)).getOrElse(null);
   }
 
+  def startBlobBatchImport(arg: Config): BlobBatchImportSession = {
+    val state = new BoundTransactionState() {
+      override val conf: RuntimeContext = arg.asInstanceOf[RuntimeContext];
+      override val blobBuffer: TransactionalBlobBuffer = new TransactionalBlobBufferImpl(conf.getBlobPropertyStoreService);
+      val streamingBlobs: CachedStreamingBlobList = new CachedStreamingBlobListImpl();
+    }
+
+    ThreadBoundContext.bindState(state);
+
+    new BlobBatchImportSession() {
+      def success(): Unit = {
+        state.blobBuffer.flushBlobs();
+      }
+
+      def failure(): Unit = {
+
+      }
+    }
+  }
+
   def saveBlob(blob: Blob, valueWriter: ValueWriter[_]) = {
     val blobId = blobIdFactory.create();
     val keyId = valueWriter._get("keyId").asInstanceOf[Int];
     val block = valueWriter._get("block").asInstanceOf[PropertyBlock];
-    ThreadBoundContext.transaction._state.asInstanceOf[TxStateExtension].addBlob(blobId, blob);
+    //ThreadBoundContext.transaction._state.asInstanceOf[TxStateExtension].addBlob(blobId, blob);
+    ThreadBoundContext.state.blobBuffer.addBlob(blobId, blob);
     block.setValueBlocks(_encodeBlobEntryAsLongArray(blob, blobId, keyId));
   }
 
@@ -246,13 +269,16 @@ object BlobIO extends Logging {
 
   private def _readBlobValue(values: Array[Long]): BlobValue = {
     //FIXME
-    val conf = ThreadBoundContext.transaction._conf;
+    //val conf = ThreadBoundContext.transaction._conf;
     val (bid, length, mt) = _unpackBlob(values);
-    val storage: BlobStorage = conf.asInstanceOf[RuntimeContext].contextGet[BlobPropertyStoreService]().blobStorage;
+    val storage: BlobStorage = ThreadBoundContext.state.conf.getBlobPropertyStoreService.blobStorage;
+    /*
     val blob = ThreadBoundContext.transaction._stateOption
       .flatMap(_.asInstanceOf[TxStateExtension].getBufferedBlob(bid))
       .getOrElse(storage.loadBatch(Array(bid)).head.get);
-
+    */
+    val blob = ThreadBoundContext.state.blobBuffer.getBlob(bid)
+      .getOrElse(storage.loadBatch(Array(bid)).head.get);
     new BlobValue(Blob.withStoreId(blob, bid));
   }
 
@@ -263,10 +289,11 @@ object BlobIO extends Logging {
     val values = block.getValueBlocks;
     val length = values(1) >> 16;
 
-    val state = ThreadBoundContext.transaction._state.asInstanceOf[TxStateExtension];
+    //val state = ThreadBoundContext.transaction._state.asInstanceOf[TxStateExtension];
     val bid = blobIdFactory.fromLongArray(values(2), values(3));
     //soft delete
-    state.removeBlob(bid);
+    //state.removeBlob(bid);
+    ThreadBoundContext.state.blobBuffer.removeBlob(bid);
   }
 
   /**
@@ -292,6 +319,12 @@ object BlobIO extends Logging {
     def readInt(): Int;
 
     def readLong(): Long;
+  }
+
+  trait BlobBatchImportSession {
+    def success(): Unit;
+
+    def failure(): Unit;
   }
 
 }

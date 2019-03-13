@@ -213,16 +213,21 @@ class BlobCacheInSession(streamServer: TransactionalBlobStreamServer) extends Lo
   def start() {
     new Thread(new Runnable {
       override def run() {
-        val now = System.currentTimeMillis();
-        val ids = cache.filter(_._2._2 < now).map(_._1)
-        if (!ids.isEmpty) {
-          //logger.debug(s"cached blobs expired: [${ids.mkString(",")}]");
-          invalidate(ids);
+        while (true) {
+          val now = System.currentTimeMillis();
+          val ids = cache.filter(_._2._2 < now).map(_._1)
+          if (!ids.isEmpty) {
+            //logger.debug(s"cached blobs expired: [${ids.mkString(",")}]");
+            invalidate(ids);
+          }
+
+          Thread.sleep(CHECK_INTERVAL);
         }
       }
     }).start();
   }
 
+  val CHECK_INTERVAL = 10000L;
   val EXPIRATION = 600000L;
   val cache = mutable.Map[String, (Blob, Long)]();
 
@@ -230,7 +235,7 @@ class BlobCacheInSession(streamServer: TransactionalBlobStreamServer) extends Lo
     val s = key.asLiteralString();
     cache(s) = blob -> (System.currentTimeMillis() + EXPIRATION);
 
-    ThreadBoundContext.cachedBlobs += s;
+    ThreadBoundContext.streamingBlobs.addBlob(s);
   }
 
   def invalidate(ids: Iterable[String]) = {
