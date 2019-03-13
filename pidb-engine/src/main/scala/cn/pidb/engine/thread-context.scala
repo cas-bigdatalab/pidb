@@ -12,7 +12,7 @@ import scala.collection.mutable.ArrayBuffer
 /**
   * Created by bluejoe on 2018/11/28.
   */
-object ThreadBoundContext extends Logging {
+object ThreadBoundContext {
   private val _stateLocal: ThreadLocal[BoundTransactionState] = new ThreadLocal[BoundTransactionState]();
 
   def state: BoundTransactionState = _stateLocal.get;
@@ -22,7 +22,7 @@ object ThreadBoundContext extends Logging {
   def unbindState() = _stateLocal.remove();
 
   def bind(tx: KernelTransaction) = bindState(new BoundTransactionState() {
-    override def conf: RuntimeContext = tx._get("storageEngine.neoStores.config").asInstanceOf[RuntimeContext];
+    override val conf: RuntimeContext = tx._get("storageEngine.neoStores.config").asInstanceOf[RuntimeContext];
   });
 
   def blobBuffer: TransactionalBlobBuffer = state.blobBuffer;
@@ -37,15 +37,15 @@ object ThreadBoundContext extends Logging {
 }
 
 trait BoundTransactionState {
-  def conf: RuntimeContext;
+  val conf: RuntimeContext;
 
-  def blobPropertyStoreService: BlobPropertyStoreService = conf.getBlobPropertyStoreService;
+  lazy val blobPropertyStoreService: BlobPropertyStoreService = conf.getBlobPropertyStoreService;
 
-  def blobStorage: BlobStorage = blobPropertyStoreService.blobStorage;
+  lazy val blobStorage: BlobStorage = blobPropertyStoreService.blobStorage;
 
-  def blobBuffer: TransactionalBlobBuffer = new TransactionalBlobBufferImpl(blobStorage);
+  lazy val blobBuffer: TransactionalBlobBuffer = new TransactionalBlobBufferImpl(blobStorage);
 
-  def streamingBlobs: CachedStreamingBlobList = new CachedStreamingBlobListImpl();
+  lazy val streamingBlobs: CachedStreamingBlobList = new CachedStreamingBlobListImpl();
 }
 
 trait CachedStreamingBlobList {
@@ -92,45 +92,34 @@ class TransactionalBlobBufferImpl(blobStorage: BlobStorage) extends Transactiona
   case class BlobDelete(id: BlobId) extends BlobChange {
   }
 
-  val addedBlobs = ArrayBuffer[BlobChange]();
-
-  val deletedBlobs = ArrayBuffer[BlobChange]();
+  val changes = ArrayBuffer[BlobChange]();
 
   def getBlob(id: BlobId): Option[Blob] = {
     val sid = id.asLiteralString();
-    addedBlobs.find(x => x.isInstanceOf[BlobAdd]
+    changes.find(x => x.isInstanceOf[BlobAdd]
       && x.idString.equals(sid))
       .map(_.asInstanceOf[BlobAdd].blob)
   }
 
-  def addBlob(id: BlobId, blob: Blob) = addedBlobs += BlobAdd(id, blob)
+  def addBlob(id: BlobId, blob: Blob) = changes += BlobAdd(id, blob)
 
-  def removeBlob(bid: BlobId) = deletedBlobs += BlobDelete(bid);
+  def removeBlob(bid: BlobId) = changes += BlobDelete(bid);
 
-  private def flushAddedBlobs(): Unit = {
-    addedBlobs.filter(_.isInstanceOf[BlobAdd]).map(_.asInstanceOf[BlobAdd])
+  def flushBlobs() = {
+    changes.filter(_.isInstanceOf[BlobAdd]).map(_.asInstanceOf[BlobAdd])
       .map(x => x.id -> x.blob).grouped(100).foreach(ops => {
       blobStorage.saveBatch(ops);
       logger.debug(s"blobs saved: [${ops.map(_._2).mkString(", ")}]");
     }
     )
 
-    addedBlobs.clear()
-  }
-
-  private def flushDeletedBlobs(): Unit = {
-    val deleted = deletedBlobs.filter(_.isInstanceOf[BlobDelete]).map(_.asInstanceOf[BlobDelete].id);
+    val deleted = changes.filter(_.isInstanceOf[BlobDelete]).map(_.asInstanceOf[BlobDelete].id);
 
     if (deleted.nonEmpty) {
       blobStorage.deleteBatch(deleted);
       logger.debug(s"blobs deleted: [${deleted.map(_.asLiteralString()).mkString(", ")}]");
     }
 
-    deletedBlobs.clear()
-  }
-
-  def flushBlobs() = {
-    flushAddedBlobs();
-    flushDeletedBlobs();
+    changes.clear()
   }
 }

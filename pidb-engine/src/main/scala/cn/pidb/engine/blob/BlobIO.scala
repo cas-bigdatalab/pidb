@@ -45,8 +45,6 @@ object BlobIO extends Logging {
       }
 
       override def afterCommit(state: ReadableTransactionState, transaction: KernelTransaction, outcome: TransactionHandlerState): Unit = {
-        //val conf = tx._conf.asInstanceOf[RuntimeContext];
-        //state.asInstanceOf[TxStateExtension].flushBlobs(conf.asInstanceOf[Config]);
         ThreadBoundContext.blobBuffer.flushBlobs();
         ThreadBoundContext.conf.contextGetOption[BlobCacheInSession].map(_.invalidate(ThreadBoundContext.streamingBlobs.ids()));
       }
@@ -61,7 +59,7 @@ object BlobIO extends Logging {
     val baos = new ByteArrayOutputStream();
     val blobId = blobIdFactory.create();
     _encodeBlobEntryAsLongArray(blob, blobId, 0).foreach(baos.writeLong(_));
-    //ThreadBoundContext.transaction._state.asInstanceOf[TxStateExtension].addBlob(blobId, blob);
+
     ThreadBoundContext.blobBuffer.addBlob(blobId, blob);
     baos.toByteArray;
   }
@@ -244,8 +242,8 @@ object BlobIO extends Logging {
 
   def startBlobBatchImport(storeDir: File, arg: Config): BlobBatchImportSession = {
     val state = new BoundTransactionState() {
-      override def conf: RuntimeContext = arg.asInstanceOf[RuntimeContext];
-      override def blobStorage: BlobStorage = BlobStorage.create(arg);
+      override val conf: RuntimeContext = arg.asInstanceOf[RuntimeContext];
+      override val blobStorage: BlobStorage = BlobStorage.create(arg);
       blobStorage.initialize(storeDir, BlobIdFactory.get, arg);
     }
 
@@ -267,7 +265,7 @@ object BlobIO extends Logging {
     val blobId = blobIdFactory.create();
     val keyId = valueWriter._get("keyId").asInstanceOf[Int];
     val block = valueWriter._get("block").asInstanceOf[PropertyBlock];
-    //ThreadBoundContext.transaction._state.asInstanceOf[TxStateExtension].addBlob(blobId, blob);
+
     ThreadBoundContext.blobBuffer.addBlob(blobId, blob);
     block.setValueBlocks(_encodeBlobEntryAsLongArray(blob, blobId, keyId));
   }
