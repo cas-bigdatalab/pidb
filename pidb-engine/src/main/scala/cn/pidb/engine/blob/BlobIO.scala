@@ -243,7 +243,7 @@ object BlobIO extends Logging {
   def startBlobBatchImport(storeDir: File, arg: Config): BlobBatchImportSession = {
     val state = new BoundTransactionState() {
       override val conf: RuntimeContext = arg.asInstanceOf[RuntimeContext];
-      override val blobStorage: BlobStorage = BlobStorage.create(arg);
+      override lazy val blobStorage: BlobStorage = BlobStorage.create(arg);
       blobStorage.initialize(storeDir, BlobIdFactory.get, arg);
     }
 
