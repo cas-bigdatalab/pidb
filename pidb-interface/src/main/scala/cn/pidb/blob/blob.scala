@@ -159,8 +159,8 @@ object Blob {
   }
 
   def fromURL(url: String): Blob = {
-    val p = "(http|https|file|ftp|ftps):\\/\\/[\\w\\-_]+(\\.[\\w\\-_]+)+([\\w\\-\\.,@?^=%&:/~\\+#]*[\\w\\-\\@?^=%&/~\\+#])?".r
-    val uri = p.findFirstIn(url.toLowerCase).getOrElse(url)
+    val p = "(?i)(http|https|file|ftp|ftps):\\/\\/[\\w\\-_]+(\\.[\\w\\-_]+)+([\\w\\-\\.,@?^=%&:/~\\+#]*[\\w\\-\\@?^=%&/~\\+#])?".r
+    val uri = p.findFirstIn(url).getOrElse(url)
 
     val lower = uri.toLowerCase();
     if (lower.startsWith("http://") || lower.startsWith("https://")) {
