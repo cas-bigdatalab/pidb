@@ -26,8 +26,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 import cn.pidb.blob.Blob;
 import cn.pidb.engine.blob.DefaultBlobFunctions;
 import org.neo4j.values.storable.BlobValue;
@@ -1206,18 +1204,9 @@ public class Extractors
         @Override
         protected boolean extract0( char[] data, int offset, int length, CSVHeaderInformation optionalData )
         {
-            String str = new String( data, offset, length );
-            Pattern p = Pattern.compile("^<\\s*(?<url>(http|ftp|ftps|https|file|):\\/\\/[\\w\\-_]+(\\.[\\w\\-_]+)" +
-                    "+([\\w\\-\\.,@?^=%&:/~\\+#]*[\\w\\-\\@?^=%&/~\\+#])?)\\s*>$") ;
-            Matcher m =p.matcher(str);
-
-            if(!m.matches()){
-                return false;
-            }
-
-            String url = m.group("url");
+            String tmpStr = new String( data, offset, length );
             DefaultBlobFunctions bf = new DefaultBlobFunctions();
-            Blob blob = bf.fromURL(url);
+            Blob blob = bf.fromURL(tmpStr);
             value = new BlobValue(blob);
             return true;
         }

@@ -159,16 +159,19 @@ object Blob {
   }
 
   def fromURL(url: String): Blob = {
-    val lower = url.toLowerCase();
+    val p = "(http|https|file|ftp|ftps):\\/\\/[\\w\\-_]+(\\.[\\w\\-_]+)+([\\w\\-\\.,@?^=%&:/~\\+#]*[\\w\\-\\@?^=%&/~\\+#])?".r
+    val uri = p.findFirstIn(url.toLowerCase).getOrElse(url)
+
+    val lower = uri.toLowerCase();
     if (lower.startsWith("http://") || lower.startsWith("https://")) {
-      fromHttpURL(url);
+      fromHttpURL(uri);
     }
     else if (lower.startsWith("file://")) {
-      fromFile(new File(url.substring(lower.indexOf("//") + 1)));
+      fromFile(new File(uri.substring(lower.indexOf("//") + 1)));
     }
     else {
       //ftp, ftps?
-      fromBytes(IOUtils.toByteArray(new URL(url)));
+      fromBytes(IOUtils.toByteArray(new URL(uri)));
     }
   }
 }
