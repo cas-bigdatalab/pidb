@@ -5,18 +5,18 @@ import java.util.concurrent._
 
 import cn.pidb.blob.BlobIdFactory
 import cn.pidb.blob.storage.Closable
-import cn.pidb.engine.storage.{Bufferable, Storage}
+import cn.pidb.engine.storage.{Bufferable, ExternalBlobStorage}
 import cn.pidb.engine.buffer.exception.NotBindingException
 import cn.pidb.util.Configuration
 import cn.pidb.util.ConfigurationUtils._
 
 trait Buffer extends Closable {
-  protected final var temp : Storage with Bufferable = _ // only delete
-  protected final var persist : Storage = _
+  protected final var temp : ExternalBlobStorage with Bufferable = _ // only delete
+  protected final var persist : ExternalBlobStorage = _
   protected final var binding : Boolean = false
   protected final val es : ScheduledExecutorService = Executors.newScheduledThreadPool(1)
-  def getBufferableStorage: Storage with Bufferable = temp
-  def bind(tempStorage : Storage with Bufferable, externalStorage : Storage) : Unit = {
+  def getBufferableStorage: ExternalBlobStorage with Bufferable = temp
+  def bind(tempStorage : ExternalBlobStorage with Bufferable, externalStorage : ExternalBlobStorage) : Unit = {
     this.temp = tempStorage
     this.persist = externalStorage
     binding = true
@@ -37,7 +37,7 @@ trait Buffer extends Closable {
   * @param externalStorage a storage like file or hbase
   * @param time the interval upload time gap
   */
-class RollBackBuffer(tempStorage : Storage with Bufferable, externalStorage : Storage
+class RollBackBuffer(tempStorage : ExternalBlobStorage with Bufferable, externalStorage : ExternalBlobStorage
                      , time : Long) extends Buffer with RollBack {
   override def initialize(storeDir: File, blobIdFac : BlobIdFactory, conf: Configuration): Unit = {
     bind(tempStorage, externalStorage)

@@ -1,6 +1,6 @@
 package cn.pidb.engine.buffer
 
-import cn.pidb.engine.storage.Storage
+import cn.pidb.engine.storage.ExternalBlobStorage
 trait FailureProcess {}
 trait NotInParallel extends FailureProcess {
 
@@ -12,7 +12,7 @@ trait InParallel extends FailureProcess {}
   * this will restore the Buffer and Buffer's storage to the status before Transaction
   */
 trait RollBack extends NotInParallel {
-  def RollBack(f : Storage, rollBackLog : RollBackLogReader) : Unit = {
+  def RollBack(f : ExternalBlobStorage, rollBackLog : RollBackLogReader) : Unit = {
     f.deleteBatch(rollBackLog.map(f.getIdFac.fromLiteralString).toList)
     rollBackLog.clean()
   }

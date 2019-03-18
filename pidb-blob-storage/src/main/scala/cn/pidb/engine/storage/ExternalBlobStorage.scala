@@ -29,7 +29,7 @@ trait Bufferable {
 }
 
 //FIXME: choose a better class name, this class is designed only for blob storage, not for nodes/properties
-trait Storage extends BlobStorage with Logging {
+trait ExternalBlobStorage extends BlobStorage with Logging {
   protected var _blobIdFac: BlobIdFactory = _
 
   def getIdFac: BlobIdFactory = _blobIdFac
@@ -58,7 +58,7 @@ trait Storage extends BlobStorage with Logging {
 
 // TODO ref
 // TODO externalStorage?
-class HybridStorage(persistStorage: Storage, val buffer: Buffer) extends Storage {
+class HybridBlobStorage(persistStorage: ExternalBlobStorage, val buffer: Buffer) extends ExternalBlobStorage {
 
   override def deleteBatch(bids: Iterable[BlobId]): RollbackCommand = {
     buffer.getBufferableStorage.deleteBatch(bids)
@@ -95,7 +95,7 @@ class HybridStorage(persistStorage: Storage, val buffer: Buffer) extends Storage
   }
 }
 
-class HBaseStorage extends Storage {
+class HBaseBlobStorage extends ExternalBlobStorage {
   private var _table: Table = _
   //FIXME: _conn? <- _table means this object can be created lightly
   private var conn: Connection = _ //conn means don't create this object once more, it's time-consuming
@@ -182,7 +182,7 @@ class HBaseStorage extends Storage {
   override def check(bid: BlobId): Boolean = !_table.exists(HBaseUtils.buildGetBlob(bid))
 }
 
-class FileStorage extends Storage with Bufferable {
+class FileBlobStorage extends ExternalBlobStorage with Bufferable {
   var _blobDir: File = _
 
   override def initialize(storeDir: File, blobIdFac: BlobIdFactory, conf: Configuration): Unit = {
