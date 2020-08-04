@@ -1,4 +1,4 @@
 # pidb
 
-πdb is a graph database with unstructured data support
+πdb is a graph database with unstructured data support, former of PandaDB.
 
